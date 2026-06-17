@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理面板 - 实验室预约系统</title>
+    <style>
+        :root {
+            --primary: #4f46e5; --primary-hover: #4338ca;
+            --success: #059669; --danger: #dc2626; --warning: #d97706;
+            --bg: #f1f5f9; --card-bg: #ffffff; --text: #1e293b;
+            --text-secondary: #64748b; --border: #e2e8f0; --radius: 10px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #1e293b, #334155); color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .header h1 { font-size: 1.25rem; }
+        .header .logout { color: #94a3b8; cursor: pointer; font-size: 0.9rem; }
+        .header .logout:hover { color: white; }
+
+        .layout { display: flex; min-height: calc(100vh - 60px); }
+        .sidebar { width: 230px; background: var(--card-bg); border-right: 1px solid var(--border); padding: 8px 0; flex-shrink: 0; }
+        .sidebar .nav-item { padding: 12px 24px; cursor: pointer; font-weight: 500; font-size: 0.9rem; color: var(--text-secondary); transition: all 0.15s; display: flex; align-items: center; gap: 10px; }
+        .sidebar .nav-item:hover { background: #f8fafc; color: var(--text); }
+        .sidebar .nav-item.active { background: #ede9fe; color: var(--primary); font-weight: 600; border-right: 3px solid var(--primary); }
+
+        .main { flex: 1; padding: 24px; overflow-y: auto; }
+        .page { display: none; }
+        .page.active { display: block; }
+
+        .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; margin-bottom: 20px; }
+        .card h3 { margin-bottom: 16px; font-size: 1.1rem; }
+        .card h4 { margin-bottom: 12px; font-size: 0.95rem; color: var(--primary); }
+
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .stat-card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; text-align: center; }
+        .stat-card .stat-num { font-size: 2rem; font-weight: 700; }
+        .stat-card .stat-label { font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        th { background: #f8fafc; font-weight: 600; color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; }
+        tr:hover { background: #f8fafc; }
+
+        .status-tag { font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-approved { background: #d1fae5; color: #065f46; }
+        .status-rejected { background: #fee2e2; color: #991b1b; }
+        .status-cancelled { background: #f1f5f9; color: #64748b; }
+
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 8px 18px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; border: none; transition: all 0.15s; gap: 6px; }
+        .btn-sm { padding: 5px 12px; font-size: 0.8rem; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #047857; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-warning:hover { background: #b45309; }
+        .btn-secondary { background: #e2e8f0; color: var(--text); }
+        .btn-secondary:hover { background: #cbd5e1; }
+
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 0.85rem; }
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 8px 12px; border: 2px solid var(--border); border-radius: 6px;
+            font-size: 0.9rem; font-family: inherit; width: 100%;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--primary); }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+
+        .inline-form { display: flex; gap: 8px; align-items: flex-end; }
+        .inline-form .form-group { margin-bottom: 0; flex: 1; }
+
+        .list-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); background: #fff; border-radius: 6px; margin-bottom: 6px; }
+        .list-item .item-name { font-weight: 500; }
+        .list-item .item-actions { display: flex; gap: 6px; }
+
+        .toggle-switch { position: relative; width: 44px; height: 24px; display: inline-block; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #cbd5e1; border-radius: 24px; transition: 0.2s; }
+        .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+        input:checked + .toggle-slider { background: var(--success); }
+        input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+        .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 12px; font-weight: 500; font-size: 0.9rem; }
+        .alert-success { background: #f0fdf4; color: var(--success); border: 1px solid #bbf7d0; }
+        .alert-error { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+        .alert-info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+        .loading { display: inline-block; width: 18px; height: 18px; border: 2px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.6s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .availability-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+        .avail-card { border: 2px solid var(--border); border-radius: 8px; padding: 16px; }
+        .avail-card h4 { margin-bottom: 8px; }
+        .avail-card .slot-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 0.85rem; }
+        .avail-card .slot-free { color: var(--success); }
+        .avail-card .slot-booked { color: var(--danger); }
+
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .color-picker-row { display: flex; align-items: center; gap: 8px; }
+
+        pre { background: #f8fafc; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; max-height: 300px; }
+
+        @media (max-width: 768px) {
+            .layout { flex-direction: column; }
+            .sidebar { width: 100%; display: flex; overflow-x: auto; padding: 8px; border-right: none; border-bottom: 1px solid var(--border); }
+            .sidebar .nav-item { white-space: nowrap; border-right: none !important; }
+            .sidebar .nav-item.active { border-bottom: 3px solid var(--primary); border-right: none; }
+            .two-col { grid-template-columns: 1fr; }
+            table { display: block; overflow-x: auto; }
+        }
+    </style>
+</head>
+<body>
+    <div id="login-screen">
+        <div style="max-width:400px;margin:100px auto">
+            <div class="card" style="text-align:center">
+                <h2 style="margin-bottom:20px">🔐 管理员登录</h2>
+                <div id="login-error" style="color:var(--danger);margin-bottom:12px;display:none"></div>
+                <div class="form-group">
+                    <input type="password" id="admin-password" placeholder="请输入管理员密码" style="text-align:center;font-size:1.1rem" onkeydown="if(event.key==='Enter')login()">
+                </div>
+                <button class="btn btn-primary" onclick="login()">登录</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-screen" style="display:none">
+        <div class="header">
+            <h1>实验室预约管理系统</h1>
+            <span class="logout" onclick="logout()">退出登录</span>
+        </div>
+        <div class="layout">
+            <div class="sidebar">
+                <div class="nav-item active" onclick="switchPage('dashboard')" data-page="dashboard">📊 仪表盘</div>
+                <div class="nav-item" onclick="switchPage('bookings')" data-page="bookings">📋 预约管理</div>
+                <div class="nav-item" onclick="switchPage('availability')" data-page="availability">📅 可用性一览</div>
+                <div class="nav-item" onclick="switchPage('classrooms')" data-page="classrooms">🏫 教室管理</div>
+                <div class="nav-item" onclick="switchPage('majors')" data-page="majors">📚 专业预设</div>
+                <div class="nav-item" onclick="switchPage('formconfig')" data-page="formconfig">⚙️ 表单配置</div>
+                <div class="nav-item" onclick="switchPage('settings')" data-page="settings">🔧 系统设置</div>
+                <div class="nav-item" onclick="switchPage('database')" data-page="database">💾 数据库管理</div>
+            </div>
+            <div class="main">
+                <!-- Dashboard -->
+                <div class="page active" id="page-dashboard">
+                    <div class="stats" id="stats-cards"></div>
+                    <div class="card"><h3>最近预约</h3><div id="recent-bookings" style="overflow-x:auto"></div></div>
+                </div>
+
+                <!-- Bookings -->
+                <div class="page" id="page-bookings">
+                    <div class="card">
+                        <h3>所有预约记录</h3>
+                        <div class="filter-bar">
+                            <div class="form-group" style="margin-bottom:0"><label>日期</label><input type="date" id="filter-date" onchange="loadBookings()"></div>
+                            <div class="form-group" style="margin-bottom:0"><label>教室</label><select id="filter-room" onchange="loadBookings()"><option value="">全部</option></select></div>
+                            <div class="form-group" style="margin-bottom:0"><label>状态</label><select id="filter-status" onchange="loadBookings()"><option value="">全部</option><option value="pending">待审核</option><option value="approved">已通过</option><option value="rejected">已拒绝</option><option value="cancelled">已取消</option></select></div>
+                            <div class="form-group" style="margin-bottom:0"><label>学号</label><input type="text" id="filter-student" placeholder="搜索" style="width:140px" onchange="loadBookings()"></div>
+                            <button class="btn btn-secondary" onclick="clearFilters()" style="align-self:flex-end">清除</button>
+                        </div>
+                        <div id="bookings-table" style="overflow-x:auto"></div>
+                    </div>
+                </div>
+
+                <!-- Availability -->
+                <div class="page" id="page-availability">
+                    <div class="card">
+                        <h3>教室可用性总览</h3>
+                        <div class="filter-bar"><div class="form-group" style="margin-bottom:0"><label>日期</label><input type="date" id="avail-date" onchange="loadAvailabilityAll()"></div></div>
+                        <div class="availability-grid" id="avail-grid"></div>
+                    </div>
+                </div>
+
+                <!-- Classroom Management -->
+                <div class="page" id="page-classrooms">
+                    <div class="card">
+                        <h3>教室管理</h3>
+                        <div class="inline-form" style="margin-bottom:16px"><div class="form-group" style="flex:1"><input type="text" id="new-classroom" placeholder="输入教室名称"></div><button class="btn btn-success" onclick="addClassroom()">添加</button></div>
+                        <div id="classroom-list"></div>
+                    </div>
+                </div>
+
+                <!-- Majors -->
+                <div class="page" id="page-majors">
+                    <div class="card">
+                        <h3>专业预设管理</h3>
+                        <div class="inline-form" style="margin-bottom:16px"><div class="form-group" style="flex:1"><input type="text" id="new-major" placeholder="输入专业名称"></div><button class="btn btn-success" onclick="addMajor()">添加</button></div>
+                        <div id="major-list"></div>
+                    </div>
+                </div>
+
+                <!-- Form Field Config -->
+                <div class="page" id="page-formconfig">
+                    <div class="card">
+                        <h3>预约表单字段配置</h3>
+                        <p style="color:var(--text-secondary);margin-bottom:16px;font-size:0.9rem">设置每个字段是否为必填</p>
+                        <div id="form-fields-list"></div>
+                    </div>
+                </div>
+
+                <!-- System Settings -->
+                <div class="page" id="page-settings">
+                    <div class="card">
+                        <h3>系统设置</h3>
+                        <div class="form-group"><label>管理员密码</label><input type="text" id="set-admin-password"></div>
+                        <div class="form-group"><label>预约成功提示消息</label><textarea id="set-success-message" rows="3"></textarea></div>
+
+                        <h4 style="margin-top:20px">成功页面警示语</h4>
+                        <p style="color:var(--text-secondary);margin-bottom:8px;font-size:0.85rem">每行一条，将显示在预约成功提示下方（红色倒计时区域上方）</p>
+                        <textarea id="set-notice-lines" rows="3" placeholder="请及时到办公室核实能否正式预约&#10;办理正式手续后方可使用教室"></textarea>
+
+                        <h4 style="margin-top:20px">预约页面副标题</h4>
+                        <div class="two-col">
+                            <div class="form-group"><label>文字内容</label><input type="text" id="subtitle-text" value="请填写以下信息完成实验室预约"></div>
+                            <div class="form-group"><label>字号</label><select id="subtitle-size">
+                                <option value="12px">12px</option><option value="14px">14px</option><option value="16px" selected>16px</option><option value="18px">18px</option><option value="20px">20px</option><option value="24px">24px</option>
+                            </select></div>
+                            <div class="form-group"><label>字重</label><select id="subtitle-weight">
+                                <option value="300">轻 (300)</option><option value="400" selected>正常 (400)</option><option value="500">中等 (500)</option><option value="700">粗体 (700)</option><option value="900">加粗 (900)</option>
+                            </select></div>
+                            <div class="form-group"><label>样式</label><select id="subtitle-style">
+                                <option value="normal" selected>正常</option><option value="italic">斜体</option>
+                            </select></div>
+                            <div class="form-group"><label>颜色</label><input type="color" id="subtitle-color" value="#ffffff"></div>
+                        </div>
+
+                        <h4 style="margin-top:20px">可预约时间段</h4>
+                        <p style="color:var(--text-secondary);margin-bottom:8px;font-size:0.85rem">格式：时间 | 备注</p>
+                        <div id="time-slot-editor"></div>
+                        <button class="btn btn-secondary btn-sm" onclick="addTimeSlotRow()" style="margin-bottom:16px">+ 添加时间段</button>
+
+                        <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
+                        <div id="settings-msg"></div>
+                    </div>
+                </div>
+
+                <!-- Database Management -->
+                <div class="page" id="page-database">
+                    <div class="card">
+                        <h3>数据库配置信息</h3>
+                        <pre id="db-config-display">加载中...</pre>
+                    </div>
+                    <div class="card">
+                        <h3>备份数据库</h3>
+                        <p style="color:var(--text-secondary);margin-bottom:12px">下载所有预约记录为 JSON 文件</p>
+                        <a class="btn btn-primary" id="backup-btn" href="#" onclick="downloadBackup()" style="text-decoration:none">📥 下载备份 (JSON)</a>
+                    </div>
+                    <div class="card">
+                        <h3>导入数据</h3>
+                        <p style="color:var(--text-secondary);margin-bottom:12px">从 JSON 备份文件导入预约记录（不会覆盖已有数据）</p>
+                        <input type="file" id="import-file" accept=".json" style="margin-bottom:12px">
+                        <button class="btn btn-warning" onclick="importBackup()">📤 导入数据</button>
+                        <div id="import-msg"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let adminPassword = '';
+        let allBookings = [];
+
+        async function login() {
+            const pwd = document.getElementById('admin-password').value;
+            try {
+                const resp = await fetch('/api/admin/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pwd }) });
+                if (resp.ok) { adminPassword = pwd; document.getElementById('login-screen').style.display = 'none'; document.getElementById('app-screen').style.display = ''; await initApp(); }
+                else { document.getElementById('login-error').textContent = '密码错误'; document.getElementById('login-error').style.display = ''; }
+            } catch (e) { document.getElementById('login-error').textContent = '连接失败'; document.getElementById('login-error').style.display = ''; }
+        }
+        function logout() { adminPassword = ''; document.getElementById('login-screen').style.display = ''; document.getElementById('app-screen').style.display = 'none'; }
+        async function api(path, opts = {}) {
+            const sep = path.includes('?') ? '&' : '?';
+            const resp = await fetch(path + sep + 'password=' + encodeURIComponent(adminPassword), opts);
+            if (!resp.ok && resp.status === 403) { alert('密码已变更，请重新登录'); logout(); }
+            return resp;
+        }
+
+        async function initApp() { await loadAllData(); document.getElementById('avail-date').value = new Date().toISOString().split('T')[0]; initBackupLink(); }
+        async function loadAllData() {
+            try { allBookings = await (await api('/api/bookings/all')).json(); } catch (e) { allBookings = []; }
+            try { const r = await api('/api/admin/classrooms'); document.getElementById('filter-room').innerHTML = '<option value="">全部</option>' + (await r.json()).classrooms.map(c => `<option value="${c}">${c}</option>`).join(''); } catch (e) {}
+            renderDashboard(); renderBookingsTable();
+        }
+
+        function switchPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('page-' + page).classList.add('active');
+            document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
+            if (page === 'dashboard') renderDashboard();
+            if (page === 'bookings') renderBookingsTable();
+            if (page === 'availability') loadAvailabilityAll();
+            if (page === 'classrooms') loadClassroomList();
+            if (page === 'majors') loadMajorList();
+            if (page === 'formconfig') loadFormFields();
+            if (page === 'settings') loadSettings();
+            if (page === 'database') loadDbConfig();
+        }
+
+        function renderDashboard() {
+            const pending = allBookings.filter(b => b.status === 'pending').length;
+            const approved = allBookings.filter(b => b.status === 'approved').length;
+            const today = allBookings.filter(b => b.booking_date === new Date().toISOString().split('T')[0]).length;
+            document.getElementById('stats-cards').innerHTML = `
+                <div class="stat-card"><div class="stat-num" style="color:var(--warning)">${pending}</div><div class="stat-label">待审核</div></div>
+                <div class="stat-card"><div class="stat-num" style="color:var(--success)">${approved}</div><div class="stat-label">已通过</div></div>
+                <div class="stat-card"><div class="stat-num" style="color:var(--primary)">${today}</div><div class="stat-label">今日预约</div></div>
+                <div class="stat-card"><div class="stat-num">${allBookings.length}</div><div class="stat-label">总预约数</div></div>`;
+            document.getElementById('recent-bookings').innerHTML = renderTable(allBookings.slice(0, 10), true);
+        }
+
+        function renderTable(bookings, compact = false) {
+            if (!bookings.length) return '<div style="text-align:center;padding:40px;color:var(--text-secondary)">暂无记录</div>';
+            const sm = { pending: ['待审核','status-pending'], approved: ['已通过','status-approved'], rejected: ['已拒绝','status-rejected'], cancelled: ['已取消','status-cancelled'] };
+            const h = compact ? '<tr><th>教室</th><th>日期</th><th>时间</th><th>学生</th><th>状态</th></tr>' : '<tr><th>ID</th><th>姓名</th><th>学号</th><th>专业</th><th>教师</th><th>教室</th><th>日期</th><th>时间</th><th>用途</th><th>状态</th><th>操作</th></tr>';
+            return `<table>${h}${bookings.map(b => {
+                const [st, sc] = sm[b.status] || ['未知',''];
+                if (compact) return `<tr><td>${b.classroom}</td><td>${b.booking_date}</td><td>${b.start_time}-${b.end_time}</td><td>${b.student_name}(${b.student_id})</td><td><span class="status-tag ${sc}">${st}</span></td></tr>`;
+                return `<tr><td>${b.id}</td><td>${b.student_name}</td><td>${b.student_id}</td><td>${b.major}</td><td>${b.supervisor}</td><td>${b.classroom}</td><td>${b.booking_date}</td><td>${b.start_time}-${b.end_time}</td><td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.purpose||'-'}</td><td><span class="status-tag ${sc}">${st}</span></td><td>${b.status==='pending'?`<button class="btn btn-success btn-sm" onclick="approveBooking(${b.id})">通过</button><button class="btn btn-warning btn-sm" onclick="rejectBooking(${b.id})" style="margin-left:4px">拒绝</button>`:(b.status==='approved'?`<button class="btn btn-warning btn-sm" onclick="rejectBooking(${b.id})">撤销</button>`:'')}<button class="btn btn-danger btn-sm" onclick="deleteBooking(${b.id})" style="margin-left:4px">删除</button></td></tr>`;
+            }).join('')}</table>`;
+        }
+
+        async function loadBookings() {
+            const p = new URLSearchParams();
+            ['filter-date','filter-room','filter-status','filter-student'].forEach(id => { const v = document.getElementById(id).value; if (v) p.set(id.replace('filter-',''), id==='filter-student'?'student_id':id==='filter-room'?'classroom':'status' in {'filter-date':'date'}?{date:'date'}[id]:'status'); });
+            // simpler:
+            const params = new URLSearchParams();
+            const date = document.getElementById('filter-date').value;
+            const room = document.getElementById('filter-room').value;
+            const status = document.getElementById('filter-status').value;
+            const student = document.getElementById('filter-student').value;
+            if (date) params.set('date', date);
+            if (room) params.set('classroom', room);
+            if (status) params.set('status', status);
+            if (student) params.set('student_id', student);
+            document.getElementById('bookings-table').innerHTML = renderTable(await (await api('/api/bookings?' + params)).json());
+        }
+        function renderBookingsTable() { document.getElementById('bookings-table').innerHTML = renderTable(allBookings); }
+        function clearFilters() { ['filter-date','filter-room','filter-status','filter-student'].forEach(id => document.getElementById(id).value = ''); renderBookingsTable(); }
+        async function approveBooking(id) { if (!confirm('确认通过？')) return; await api(`/api/bookings/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'approved' }) }); await loadAllData(); }
+        async function rejectBooking(id) { if (!confirm('确认拒绝/撤销？')) return; await api(`/api/bookings/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'rejected' }) }); await loadAllData(); }
+        async function deleteBooking(id) { if (!confirm('确认删除？')) return; await api(`/api/bookings/${id}`, { method: 'DELETE' }); await loadAllData(); }
+
+        async function loadAvailabilityAll() {
+            const date = document.getElementById('avail-date').value; if (!date) return;
+            const grid = document.getElementById('avail-grid');
+            grid.innerHTML = '<div style="text-align:center;padding:20px"><span class="loading"></span></div>';
+            let classrooms = [];
+            try { classrooms = (await (await api('/api/admin/classrooms')).json()).classrooms; } catch (e) { return; }
+            const cards = await Promise.all(classrooms.map(async room => {
+                const r = await fetch(`/api/availability?classroom=${encodeURIComponent(room)}&date=${date}`);
+                return { room, slots: (await r.json()).slots };
+            }));
+            grid.innerHTML = cards.map(c => `<div class="avail-card"><h4>${c.room}</h4>${c.slots.map(s => `<div class="slot-row"><span>${s.start} - ${s.end}</span>${s.available?'<span class="slot-free">空闲</span>':`<span class="slot-booked">${s.booked_by||'已预约'}</span>`}</div>`).join('')}</div>`).join('');
+        }
+
+        // Classroom management
+        async function loadClassroomList() {
+            const c = document.getElementById('classroom-list');
+            const data = await (await api('/api/admin/classrooms')).json();
+            c.innerHTML = data.classrooms.map((r,i) => `<div class="list-item"><span class="item-name" id="room-name-${i}">${r}</span><span class="item-actions"><button class="btn btn-sm btn-secondary" onclick="editClassroom(${i},this)">✏️</button><button class="btn btn-sm btn-danger" onclick="deleteClassroom(${i})">🗑️</button></span></div>`).join('');
+        }
+        function editClassroom(index, btn) {
+            const el = document.getElementById('room-name-' + index);
+            const old = el.textContent;
+            const inp = document.createElement('input');
+            inp.type = 'text'; inp.value = old;
+            inp.style.cssText = 'padding:4px 8px;border:2px solid var(--primary);border-radius:4px;font-size:0.9rem;width:200px';
+            inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); };
+            inp.onblur = async () => {
+                const n = inp.value.trim();
+                if (n && n !== old) {
+                    await api(`/api/admin/classrooms/${index}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: n }) });
+                    await loadClassroomList(); await loadAllData();
+                } else loadClassroomList();
+            };
+            el.innerHTML = ''; el.appendChild(inp); inp.focus();
+        }
+        async function deleteClassroom(i) { if (!confirm('确认删除？')) return; await api(`/api/admin/classrooms/${i}`, { method: 'DELETE' }); await loadClassroomList(); await loadAllData(); }
+        async function addClassroom() {
+            const v = document.getElementById('new-classroom').value.trim(); if (!v) return;
+            await api('/api/admin/classrooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: v }) });
+            document.getElementById('new-classroom').value = ''; await loadClassroomList(); await loadAllData();
+        }
+
+        // Majors
+        async function loadMajorList() {
+            const c = document.getElementById('major-list');
+            const data = await (await api('/api/admin/majors')).json();
+            c.innerHTML = data.majors.map((m,i) => `<div class="list-item"><span class="item-name">${m}</span><button class="btn btn-sm btn-danger" onclick="deleteMajor(${i})">🗑️</button></div>`).join('');
+        }
+        async function deleteMajor(i) { if (!confirm('确认删除？')) return; await api(`/api/admin/majors/${i}`, { method: 'DELETE' }); await loadMajorList(); }
+        async function addMajor() {
+            const v = document.getElementById('new-major').value.trim(); if (!v) return;
+            await api('/api/admin/majors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: v }) });
+            document.getElementById('new-major').value = ''; await loadMajorList();
+        }
+
+        // Form fields
+        async function loadFormFields() {
+            const c = document.getElementById('form-fields-list');
+            const data = await (await api('/api/admin/form-fields')).json();
+            c.innerHTML = Object.entries(data.form_fields).map(([k,v]) => `<div class="list-item"><span><strong>${v.label}</strong> <span style="color:var(--text-secondary);font-size:0.8rem">(${k})</span></span><label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer"><span style="color:var(--text-secondary)">必填</span><label class="toggle-switch"><input type="checkbox" ${v.required?'checked':''} onchange="toggleField('${k}',this.checked)"><span class="toggle-slider"></span></label></label></div>`).join('');
+        }
+        async function toggleField(k, v) { await api(`/api/admin/form-fields/${k}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ required: v }) }); }
+
+        // System Settings
+        let timeSlotRows = [];
+
+        async function loadSettings() {
+            const data = await (await api('/api/admin/settings')).json();
+            document.getElementById('set-admin-password').value = data.admin_password || '';
+            document.getElementById('set-success-message').value = data.success_message || '';
+            document.getElementById('set-notice-lines').value = (data.notice_lines || []).join('\n');
+
+            // Subtitle
+            const s = data.subtitle || {};
+            document.getElementById('subtitle-text').value = s.text || '请填写以下信息完成实验室预约';
+            document.getElementById('subtitle-size').value = s.fontSize || '16px';
+            document.getElementById('subtitle-weight').value = s.fontWeight || '400';
+            document.getElementById('subtitle-style').value = s.fontStyle || 'normal';
+            document.getElementById('subtitle-color').value = s.color || '#ffffff';
+
+            // Time slots
+            timeSlotRows = (data.time_slots || []).map(t => typeof t === 'string' ? { slot: t, remark: '' } : { slot: t.slot || '', remark: t.remark || '' });
+            renderTimeSlotRows();
+            document.getElementById('settings-msg').innerHTML = '';
+        }
+
+        function renderTimeSlotRows() {
+            const c = document.getElementById('time-slot-editor');
+            if (!timeSlotRows.length) timeSlotRows = [{ slot: '', remark: '' }];
+            c.innerHTML = timeSlotRows.map((t, i) => `
+                <div class="inline-form" style="margin-bottom:8px">
+                    <div class="form-group" style="flex:2"><input type="text" value="${t.slot||''}" placeholder="08:00-09:35" onchange="timeSlotRows[${i}].slot=this.value" oninput="timeSlotRows[${i}].slot=this.value"></div>
+                    <div class="form-group" style="flex:1"><input type="text" value="${t.remark||''}" placeholder="第一课时" onchange="timeSlotRows[${i}].remark=this.value" oninput="timeSlotRows[${i}].remark=this.value"></div>
+                    <button class="btn btn-danger btn-sm" onclick="timeSlotRows.splice(${i},1);renderTimeSlotRows()">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function addTimeSlotRow() { timeSlotRows.push({ slot: '', remark: '' }); renderTimeSlotRows(); }
+
+        async function saveSettings() {
+            // Sync current values from inputs
+            const rows = document.querySelectorAll('#time-slot-editor .inline-form');
+            rows.forEach((row, i) => {
+                const inputs = row.querySelectorAll('input');
+                if (timeSlotRows[i]) {
+                    timeSlotRows[i].slot = inputs[0]?.value || '';
+                    timeSlotRows[i].remark = inputs[1]?.value || '';
+                }
+            });
+            const validSlots = timeSlotRows.filter(t => t.slot.trim());
+
+            const newPwd = document.getElementById('set-admin-password').value.trim();
+            const body = {
+                success_message: document.getElementById('set-success-message').value.trim(),
+                notice_lines: document.getElementById('set-notice-lines').value.split('\n').map(s => s.trim()).filter(Boolean),
+                time_slots: validSlots,
+                subtitle: {
+                    text: document.getElementById('subtitle-text').value.trim(),
+                    fontSize: document.getElementById('subtitle-size').value,
+                    fontWeight: document.getElementById('subtitle-weight').value,
+                    fontStyle: document.getElementById('subtitle-style').value,
+                    color: document.getElementById('subtitle-color').value,
+                },
+            };
+            if (newPwd) body.admin_password = newPwd;
+
+            await api('/api/admin/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            if (newPwd) { adminPassword = newPwd; document.getElementById('set-admin-password').value = newPwd; }
+            document.getElementById('settings-msg').innerHTML = '<div class="alert alert-success">✅ 设置已保存</div>';
+            setTimeout(() => document.getElementById('settings-msg').innerHTML = '', 3000);
+        }
+
+        // Database management
+        async function loadDbConfig() {
+            const data = await (await api('/api/admin/db/config')).json();
+            document.getElementById('db-config-display').textContent = JSON.stringify(data, null, 2);
+        }
+
+        function initBackupLink() {
+            document.getElementById('backup-btn').href = `/api/admin/db/backup?password=${encodeURIComponent(adminPassword)}`;
+        }
+
+        function downloadBackup() {
+            document.getElementById('backup-btn').href = `/api/admin/db/backup?password=${encodeURIComponent(adminPassword)}`;
+        }
+
+        async function importBackup() {
+            const fileInput = document.getElementById('import-file');
+            const msgEl = document.getElementById('import-msg');
+            if (!fileInput.files.length) { msgEl.innerHTML = '<div class="alert alert-error">请选择 JSON 文件</div>'; return; }
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            const resp = await fetch(`/api/admin/db/import?password=${encodeURIComponent(adminPassword)}`, { method: 'POST', body: formData });
+            const data = await resp.json();
+            if (resp.ok) {
+                msgEl.innerHTML = `<div class="alert alert-success">✅ 导入成功：${data.imported} 条记录，跳过 ${data.skipped} 条</div>`;
+                await loadAllData();
+            } else {
+                msgEl.innerHTML = `<div class="alert alert-error">导入失败：${data.detail || '未知错误'}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>
