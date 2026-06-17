@@ -27,7 +27,7 @@
 ### Docker（推荐）
 
 ```bash
-git clone https://github.com/yourname/lab-booking.git
+git clone https://github.com/YuKi-skadi/Lab-booking.git
 cd lab-booking
 
 # 使用 SQLite（最简单）
@@ -135,7 +135,7 @@ JSON_DATA_DIR=./data
 
 ## Agent（LLM）集成
 
-项目提供 AstrBot 插件，位于独立仓库 `lab-booking-astrbot-plugin/`。
+项目提供 AstrBot 插件，位于 `lab-booking-astrbot-plugin/` 目录。
 
 插件提供 5 个 LLM Tool：
 - `query_lab_schedule` — 查某天教室占用（支持上午/下午过滤）
