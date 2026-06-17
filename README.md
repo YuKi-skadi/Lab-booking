@@ -24,20 +24,35 @@
 
 ## 快速开始
 
-### Docker（推荐）
+### Docker 部署
 
 ```bash
+# 克隆项目
 git clone https://github.com/YuKi-skadi/Lab-booking.git
-cd lab-booking
+cd Lab-booking
 
-# 使用 SQLite（最简单）
+# 启动（自动构建镜像并运行容器）
 docker compose up -d
 
-# 或使用 PostgreSQL
+# 使用 PostgreSQL 替代 SQLite
 docker compose -f docker-compose.postgres.yml up -d
 ```
 
 访问 `http://localhost:8000` 进入预约界面，`http://localhost:8000/admin` 进入管理后台。
+
+### 手动构建镜像
+
+```bash
+cd Lab-booking
+docker build -t lab-booking -f backend/Dockerfile backend/
+
+# 运行容器
+docker run -d --name lab-booking \
+  -p 8000:8000 \
+  -v lab_data:/app/data \
+  -e ADMIN_PASSWORD=your_password \
+  lab-booking
+```
 
 ### 本地开发
 
