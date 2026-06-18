@@ -164,6 +164,11 @@
                             <div class="form-group" style="margin-bottom:0"><label>学号</label><input type="text" id="filter-student" placeholder="搜索" style="width:140px" onchange="loadBookings()"></div>
                             <button class="btn btn-secondary" onclick="clearFilters()" style="align-self:flex-end">清除</button>
                         </div>
+                        <div id="batch-actions" style="display:none; margin-bottom:12px; padding:10px 14px; background:#f8fafc; border-radius:8px; align-items:center; gap:10px">
+                            <span style="font-weight:600;font-size:0.9rem">已选 <span id="selected-count">0</span> 条</span>
+                            <button class="btn btn-success btn-sm" onclick="batchUpdateStatus('approved')">✅ 批量通过</button>
+                            <button class="btn btn-warning btn-sm" onclick="batchUpdateStatus('rejected')">❌ 批量拒绝</button>
+                        </div>
                         <div id="bookings-table" style="overflow-x:auto"></div>
                     </div>
                 </div>
@@ -320,12 +325,23 @@
         function renderTable(bookings, compact = false) {
             if (!bookings.length) return '<div style="text-align:center;padding:40px;color:var(--text-secondary)">暂无记录</div>';
             const sm = { pending: ['待审核','status-pending'], approved: ['已通过','status-approved'], rejected: ['已拒绝','status-rejected'], cancelled: ['已取消','status-cancelled'] };
-            const h = compact ? '<tr><th>教室</th><th>日期</th><th>时间</th><th>学生</th><th>状态</th></tr>' : '<tr><th>ID</th><th>姓名</th><th>学号</th><th>专业</th><th>教师</th><th>教室</th><th>日期</th><th>时间</th><th>用途</th><th>状态</th><th>操作</th></tr>';
-            return `<table>${h}${bookings.map(b => {
+            const chkAll = compact ? '' : '<th style="width:36px"><input type="checkbox" id="select-all" onclick="toggleSelectAll(this)"></th>';
+            const h = compact ? '<tr><th>教室</th><th>日期</th><th>时间</th><th>学生</th><th>状态</th></tr>' : `<tr>${chkAll}<th>ID</th><th>姓名</th><th>学号</th><th>专业</th><th>教师</th><th>教室</th><th>日期</th><th>时间</th><th>用途</th><th>状态</th><th>操作</th></tr>`;
+            let html = `<table>${h}`;
+            for (const b of bookings) {
                 const [st, sc] = sm[b.status] || ['未知',''];
-                if (compact) return `<tr><td>${b.classroom}</td><td>${b.booking_date}</td><td>${b.start_time}-${b.end_time}</td><td>${b.student_name}(${b.student_id})</td><td><span class="status-tag ${sc}">${st}</span></td></tr>`;
-                return `<tr><td>${b.id}</td><td>${b.student_name}</td><td>${b.student_id}</td><td>${b.major}</td><td>${b.supervisor}</td><td>${b.classroom}</td><td>${b.booking_date}</td><td>${b.start_time}-${b.end_time}</td><td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.purpose||'-'}</td><td><span class="status-tag ${sc}">${st}</span></td><td>${b.status==='pending'?`<button class="btn btn-success btn-sm" onclick="approveBooking(${b.id})">通过</button><button class="btn btn-warning btn-sm" onclick="rejectBooking(${b.id})" style="margin-left:4px">拒绝</button>`:(b.status==='approved'?`<button class="btn btn-warning btn-sm" onclick="rejectBooking(${b.id})">撤销</button>`:'')}<button class="btn btn-danger btn-sm" onclick="deleteBooking(${b.id})" style="margin-left:4px">删除</button></td></tr>`;
-            }).join('')}</table>`;
+                if (compact) { html += `<tr><td>${b.classroom}</td><td>${b.booking_date}</td><td>${b.start_time}-${b.end_time}</td><td>${b.student_name}(${b.student_id})</td><td><span class="status-tag ${sc}">${st}</span></td></tr>`; continue; }
+                html += `<tr>
+                    <td><input type="checkbox" class="booking-cb" value="${b.id}" onclick="updateBatchBar()"></td>
+                    <td>${b.id}</td><td>${b.student_name}</td><td>${b.student_id}</td><td>${b.major}</td><td>${b.supervisor}</td>
+                    <td>${b.classroom}</td><td>${b.booking_date}</td><td>${b.start_time}-${b.end_time}</td>
+                    <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.purpose||'-'}</td>
+                    <td><span class="status-tag ${sc}">${st}</span></td>
+                    <td>${b.status==='pending'?`<button class="btn btn-success btn-sm" onclick="approveBooking(${b.id})">通过</button><button class="btn btn-warning btn-sm" onclick="rejectBooking(${b.id})" style="margin-left:4px">拒绝</button>`:(b.status==='approved'?`<button class="btn btn-warning btn-sm" onclick="rejectBooking(${b.id})">撤销</button>`:'')}<button class="btn btn-danger btn-sm" onclick="deleteBooking(${b.id})" style="margin-left:4px">删除</button></td>
+                </tr>`;
+            }
+            html += '</table>';
+            return html;
         }
 
         async function loadBookings() {
@@ -342,12 +358,35 @@
             if (status) params.set('status', status);
             if (student) params.set('student_id', student);
             document.getElementById('bookings-table').innerHTML = renderTable(await (await api('/api/bookings?' + params)).json());
+            document.getElementById('batch-actions').style.display = 'none';
         }
-        function renderBookingsTable() { document.getElementById('bookings-table').innerHTML = renderTable(allBookings); }
+        function renderBookingsTable() { document.getElementById('bookings-table').innerHTML = renderTable(allBookings); document.getElementById('batch-actions').style.display = 'none'; }
         function clearFilters() { ['filter-date','filter-room','filter-status','filter-student'].forEach(id => document.getElementById(id).value = ''); renderBookingsTable(); }
         async function approveBooking(id) { if (!confirm('确认通过？')) return; await api(`/api/bookings/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'approved' }) }); await loadAllData(); }
         async function rejectBooking(id) { if (!confirm('确认拒绝/撤销？')) return; await api(`/api/bookings/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'rejected' }) }); await loadAllData(); }
         async function deleteBooking(id) { if (!confirm('确认删除？')) return; await api(`/api/bookings/${id}`, { method: 'DELETE' }); await loadAllData(); }
+
+        function toggleSelectAll(el) {
+            document.querySelectorAll('.booking-cb').forEach(cb => cb.checked = el.checked);
+            updateBatchBar();
+        }
+        function updateBatchBar() {
+            const checked = document.querySelectorAll('.booking-cb:checked');
+            const count = checked.length;
+            document.getElementById('selected-count').textContent = count;
+            document.getElementById('batch-actions').style.display = count > 0 ? 'flex' : 'none';
+        }
+        function getSelectedIds() {
+            return Array.from(document.querySelectorAll('.booking-cb:checked')).map(cb => parseInt(cb.value));
+        }
+        async function batchUpdateStatus(status) {
+            const ids = getSelectedIds();
+            if (!ids.length) return;
+            const labels = { approved: '通过', rejected: '拒绝' };
+            if (!confirm(`确认批量${labels[status] || status} ${ids.length} 条记录？`)) return;
+            await api('/api/bookings/batch-status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids, status }) });
+            await loadAllData();
+        }
 
         async function loadAvailabilityAll() {
             const date = document.getElementById('avail-date').value; if (!date) return;
@@ -408,9 +447,135 @@
         async function loadFormFields() {
             const c = document.getElementById('form-fields-list');
             const data = await (await api('/api/admin/form-fields')).json();
-            c.innerHTML = Object.entries(data.form_fields).map(([k,v]) => `<div class="list-item"><span><strong>${v.label}</strong> <span style="color:var(--text-secondary);font-size:0.8rem">(${k})</span></span><label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer"><span style="color:var(--text-secondary)">必填</span><label class="toggle-switch"><input type="checkbox" ${v.required?'checked':''} onchange="toggleField('${k}',this.checked)"><span class="toggle-slider"></span></label></label></div>`).join('');
+            const builtIn = data.built_in || {};
+            const custom = data.custom || [];
+
+            let html = '<h4 style="margin:16px 0 8px">内置字段</h4>';
+            html += Object.entries(builtIn).map(([k,v]) => renderFormFieldRow(k, v)).join('');
+
+            html += '<h4 style="margin:20px 0 8px">自定义字段</h4>';
+            if (custom.length) {
+                html += custom.map(cf => renderFormFieldRow(cf.key, cf, true)).join('');
+            } else {
+                html += '<div style="color:var(--text-secondary);padding:8px">暂无自定义字段</div>';
+            }
+
+            html += `<div style="margin-top:16px;padding:14px;background:#f8fafc;border-radius:8px">
+                <div style="font-weight:600;margin-bottom:8px">+ 添加自定义字段</div>
+                <div class="inline-row" style="margin-bottom:8px">
+                    <input type="text" id="new-field-key" placeholder="字段 key (英文)" style="flex:1">
+                    <input type="text" id="new-field-label" placeholder="显示名称" style="flex:1">
+                </div>
+                <div class="inline-row" style="margin-bottom:8px">
+                    <select id="new-field-type" style="flex:1;padding:8px 12px;border:2px solid var(--border);border-radius:6px">
+                        <option value="text">文本</option>
+                        <option value="number">数字 (可设位数)</option>
+                        <option value="select">下拉选择</option>
+                        <option value="textarea">多行文本</option>
+                    </select>
+                    <label style="display:flex;align-items:center;gap:6px;white-space:nowrap">
+                        <input type="checkbox" id="new-field-required"> 必填
+                    </label>
+                    <button class="btn btn-success" onclick="addCustomField()">添加</button>
+                </div>
+                <div class="inline-row" id="new-field-options-row" style="display:none">
+                    <input type="text" id="new-field-options" placeholder="下拉选项，逗号分隔" style="flex:1">
+                </div>
+                <div class="inline-row" id="new-field-number-row" style="display:none">
+                    <input type="number" id="new-field-minlen" placeholder="最小位数" style="flex:1" min="0">
+                    <input type="number" id="new-field-maxlen" placeholder="最大位数" style="flex:1" min="0">
+                </div>
+            </div>`;
+
+            c.innerHTML = html;
+
+            document.getElementById('new-field-type').onchange = function() {
+                const t = this.value;
+                document.getElementById('new-field-number-row').style.display = t === 'number' ? 'flex' : 'none';
+                document.getElementById('new-field-options-row').style.display = t === 'select' ? 'flex' : 'none';
+            };
         }
-        async function toggleField(k, v) { await api(`/api/admin/form-fields/${k}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ required: v }) }); }
+
+        function renderFormFieldRow(key, cfg, isCustom = false) {
+            const v = cfg.validation || {};
+            const vInfo = [];
+            if (v.pattern) vInfo.push('正则: ' + v.pattern);
+            if (v.min_length) vInfo.push('最少' + v.min_length + '位');
+            if (v.max_length) vInfo.push('最多' + v.max_length + '位');
+
+            return `<div class="list-item">
+                <span>
+                    <strong id="fl-${key}">${cfg.label}</strong>
+                    <span style="color:var(--text-secondary);font-size:0.8rem">(${key} · ${cfg.type})</span>
+                    ${vInfo.length ? `<span style="color:var(--primary);font-size:0.78rem;margin-left:4px">${vInfo.join(', ')}</span>` : ''}
+                </span>
+                <span style="display:flex;align-items:center;gap:8px">
+                    <button class="btn btn-sm btn-secondary" onclick="editFieldLabel('${key}')">✏️</button>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer">
+                        <span style="color:var(--text-secondary)">必填</span>
+                        <label class="toggle-switch"><input type="checkbox" ${cfg.required?'checked':''} onchange="toggleField('${key}',this.checked)"><span class="toggle-slider"></span></label>
+                    </label>
+                    ${isCustom ? `<button class="btn btn-sm btn-danger" onclick="deleteCustomField('${key}')">🗑️</button>` : ''}
+                </span>
+            </div>`;
+        }
+
+        async function addCustomField() {
+            const key = document.getElementById('new-field-key').value.trim();
+            const label = document.getElementById('new-field-label').value.trim();
+            const type = document.getElementById('new-field-type').value;
+            const required = document.getElementById('new-field-required').checked;
+
+            if (!key || !label) { alert('请填写 key 和显示名称'); return; }
+            if (!/^[a-z][a-z0-9_]*$/.test(key)) { alert('key 须为小写字母开头，可含数字和下划线'); return; }
+
+            const validation = {};
+            if (type === 'number') {
+                const minl = parseInt(document.getElementById('new-field-minlen').value) || 0;
+                const maxl = parseInt(document.getElementById('new-field-maxlen').value) || 0;
+                if (minl) validation.min_length = minl;
+                if (maxl) validation.max_length = maxl;
+            }
+            if (type === 'select') {
+                const opts = document.getElementById('new-field-options').value;
+                if (opts) validation.options = opts.split(',').map(s => s.trim()).filter(Boolean);
+            }
+
+            await api('/api/admin/form-fields/custom', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key, label, type, required, validation }),
+            });
+            loadFormFields();
+        }
+
+        async function deleteCustomField(key) {
+            if (!confirm('确认删除自定义字段 "' + key + '"？')) return;
+            await api('/api/admin/form-fields/custom/' + key, { method: 'DELETE' });
+            loadFormFields();
+        }
+
+        function editFieldLabel(key) {
+            const el = document.getElementById('fl-' + key);
+            if (!el) return;
+            const old = el.textContent;
+            const inp = document.createElement('input');
+            inp.type = 'text'; inp.value = old;
+            inp.style.cssText = 'padding:4px 8px;border:2px solid var(--primary);border-radius:4px;font-size:0.9rem;width:160px';
+            inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); };
+            inp.onblur = async () => {
+                const n = inp.value.trim();
+                if (n && n !== old) {
+                    await api('/api/admin/form-fields/' + key, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label: n }) });
+                    loadFormFields();
+                } else loadFormFields();
+            };
+            el.innerHTML = ''; el.appendChild(inp); inp.focus();
+        }
+
+        async function toggleField(k, v) {
+            await api('/api/admin/form-fields/' + k, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ required: v }) });
+        }
 
         // System Settings
         let timeSlotRows = [];

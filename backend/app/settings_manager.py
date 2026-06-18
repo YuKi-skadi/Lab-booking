@@ -28,16 +28,17 @@ DEFAULT_SETTINGS = {
         "工商管理", "会计学", "金融学"
     ],
     "form_fields": {
-        "student_name": {"required": True, "label": "姓名", "type": "text", "order": 1},
-        "student_id": {"required": True, "label": "学号", "type": "text", "order": 2},
-        "major": {"required": True, "label": "专业", "type": "select", "order": 3},
-        "supervisor": {"required": True, "label": "指导教师", "type": "text", "order": 4},
-        "phone": {"required": False, "label": "手机号", "type": "text", "order": 5},
-        "classroom": {"required": True, "label": "借用教室", "type": "room_select", "order": 6},
-        "booking_date": {"required": True, "label": "借用日期", "type": "date", "order": 7},
-        "time_slot": {"required": True, "label": "借用时间", "type": "time_select", "order": 8},
-        "purpose": {"required": False, "label": "借用用途", "type": "textarea", "order": 9},
+        "student_name": {"required": True, "label": "姓名", "type": "text", "order": 1, "validation": {}},
+        "student_id": {"required": True, "label": "学号", "type": "text", "order": 2, "validation": {"pattern": "^\\d{11}$", "hint": "11位数字"}},
+        "major": {"required": True, "label": "专业", "type": "select", "order": 3, "validation": {}},
+        "supervisor": {"required": True, "label": "指导教师", "type": "text", "order": 4, "validation": {}},
+        "phone": {"required": False, "label": "手机号", "type": "number", "order": 5, "validation": {"pattern": "^\\d{11}$", "hint": "11位手机号"}},
+        "classroom": {"required": True, "label": "借用教室", "type": "room_select", "order": 6, "validation": {}},
+        "booking_date": {"required": True, "label": "借用日期", "type": "date", "order": 7, "validation": {}},
+        "time_slot": {"required": True, "label": "借用时间", "type": "time_select", "order": 8, "validation": {}},
+        "purpose": {"required": False, "label": "借用用途", "type": "textarea", "order": 9, "validation": {}},
     },
+    "custom_fields": [],
     "success_message": "预约已提交，请按照学校/单位规定流程确认预约并办理正式手续。",
     "admin_password": settings.admin_password,
     "subtitle": {
@@ -155,6 +156,21 @@ class SettingsManager:
     @property
     def notice_lines(self) -> List[str]:
         return self.get("notice_lines", DEFAULT_SETTINGS["notice_lines"])
+
+    @property
+    def custom_fields(self) -> list:
+        return self.get("custom_fields", [])
+
+    def get_all_fields(self) -> list:
+        """获取所有表单字段（内置 + 自定义），按 order 排序"""
+        fields = []
+        for key, cfg in self.form_fields.items():
+            fields.append({"key": key, **cfg})
+        for cf in self.custom_fields:
+            if cf.get("key"):
+                fields.append(cf)
+        fields.sort(key=lambda x: x.get("order", 99))
+        return fields
 
     def check_admin_password(self, password: str) -> bool:
         return password == self.admin_password

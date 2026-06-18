@@ -14,6 +14,7 @@ class BookingCreate(BaseModel):
     end_time: str = Field(..., description="结束时间，格式 HH:MM")
     purpose: Optional[str] = Field(None, max_length=500)
     phone: Optional[str] = Field(None, max_length=20)
+    custom_data: Optional[dict] = Field(default_factory=dict)
 
 
 class BookingUpdate(BaseModel):
@@ -28,6 +29,7 @@ class BookingUpdate(BaseModel):
     end_time: Optional[str] = None
     purpose: Optional[str] = None
     phone: Optional[str] = None
+    custom_data: Optional[dict] = None
 
 
 class BookingResponse(BaseModel):
@@ -43,6 +45,7 @@ class BookingResponse(BaseModel):
     purpose: Optional[str] = None
     phone: Optional[str] = None
     status: str
+    custom_data: Optional[dict] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from fastapi.responses import PlainTextResponse
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import json
 import io
 
@@ -176,28 +176,95 @@ async def delete_major(index: int, password: str = Query(...)):
 class FormFieldUpdate(BaseModel):
     required: Optional[bool] = None
     label: Optional[str] = None
+    validation: Optional[dict] = None
+
+
+class FormFieldCreate(BaseModel):
+    key: str
+    label: str
+    type: str = "text"
+    required: bool = False
+    validation: Optional[dict] = Field(default_factory=dict)
 
 
 @router.get("/form-fields")
 async def get_form_fields(password: str = Query(...)):
     check_admin(password)
     mgr = get_settings_manager()
-    return {"form_fields": mgr.form_fields}
+    return {
+        "built_in": mgr.form_fields,
+        "custom": mgr.custom_fields,
+    }
 
 
 @router.put("/form-fields/{field_key}")
 async def update_form_field(field_key: str, data: FormFieldUpdate, password: str = Query(...)):
     check_admin(password)
     mgr = get_settings_manager()
+    # Try built-in fields first, then custom fields
     fields = dict(mgr.form_fields)
-    if field_key not in fields:
-        raise HTTPException(status_code=404, detail="字段不存在")
-    if data.required is not None:
-        fields[field_key]["required"] = data.required
-    if data.label is not None:
-        fields[field_key]["label"] = data.label
-    mgr.set("form_fields", fields)
-    return {"success": True, "form_fields": fields}
+    if field_key in fields:
+        if data.required is not None:
+            fields[field_key]["required"] = data.required
+        if data.label is not None:
+            fields[field_key]["label"] = data.label
+        if data.validation is not None:
+            fields[field_key]["validation"] = data.validation
+        mgr.set("form_fields", fields)
+        return {"success": True, "form_fields": fields}
+
+    # Check custom fields
+    customs = list(mgr.custom_fields)
+    for i, cf in enumerate(customs):
+        if cf.get("key") == field_key:
+            if data.required is not None:
+                customs[i]["required"] = data.required
+            if data.label is not None:
+                customs[i]["label"] = data.label
+            if data.validation is not None:
+                customs[i]["validation"] = data.validation
+            mgr.set("custom_fields", customs)
+            return {"success": True, "custom_fields": customs}
+
+    raise HTTPException(status_code=404, detail="字段不存在")
+
+
+@router.post("/form-fields/custom")
+async def add_custom_field(data: FormFieldCreate, password: str = Query(...)):
+    check_admin(password)
+    mgr = get_settings_manager()
+    key = data.key.strip()
+    if not key:
+        raise HTTPException(status_code=400, detail="字段 key 不能为空")
+    # Check uniqueness
+    if key in mgr.form_fields:
+        raise HTTPException(status_code=400, detail="与内置字段重名")
+    for cf in mgr.custom_fields:
+        if cf.get("key") == key:
+            raise HTTPException(status_code=400, detail="字段 key 已存在")
+
+    customs = list(mgr.custom_fields)
+    customs.append({
+        "key": key,
+        "label": data.label,
+        "type": data.type,
+        "required": data.required,
+        "order": 90 + len(customs),
+        "validation": data.validation or {},
+    })
+    mgr.set("custom_fields", customs)
+    return {"success": True, "custom_fields": customs}
+
+
+@router.delete("/form-fields/custom/{field_key}")
+async def delete_custom_field(field_key: str, password: str = Query(...)):
+    check_admin(password)
+    mgr = get_settings_manager()
+    if field_key in mgr.form_fields:
+        raise HTTPException(status_code=400, detail="不能删除内置字段")
+    customs = [cf for cf in mgr.custom_fields if cf.get("key") != field_key]
+    mgr.set("custom_fields", customs)
+    return {"success": True, "custom_fields": customs}
 
 
 # ==================== 数据库管理 ====================
@@ -240,21 +307,27 @@ async def import_database(password: str = Query(...), file: UploadFile = File(..
     skipped = 0
     for b in bookings:
         try:
-            if not b.get("student_name") or not b.get("classroom"):
+            classroom = b.get("classroom")
+            if not classroom or not isinstance(classroom, str) or not classroom.strip():
                 skipped += 1
                 continue
+            raw_status = (b.get("status") or "pending").strip().lower()
+            valid_statuses = {"pending", "approved", "rejected", "cancelled"}
+            status_map = {"confirmed": "approved", "active": "approved", "done": "approved"}
+            status = raw_status if raw_status in valid_statuses else status_map.get(raw_status, "pending")
+
             booking_data = {
-                "student_name": b.get("student_name"),
-                "student_id": b.get("student_id", ""),
-                "major": b.get("major", ""),
-                "supervisor": b.get("supervisor", ""),
-                "classroom": b.get("classroom"),
-                "booking_date": b.get("booking_date"),
-                "start_time": b.get("start_time"),
-                "end_time": b.get("end_time"),
-                "purpose": b.get("purpose"),
-                "phone": b.get("phone"),
-                "status": b.get("status", "pending"),
+                "student_name": b.get("student_name") or "",
+                "student_id": b.get("student_id") or "",
+                "major": b.get("major") or "",
+                "supervisor": b.get("supervisor") or "",
+                "classroom": classroom,
+                "booking_date": b.get("booking_date") or "",
+                "start_time": b.get("start_time") or "",
+                "end_time": b.get("end_time") or "",
+                "purpose": b.get("purpose") or "",
+                "phone": b.get("phone") or "",
+                "status": status,
             }
             await storage.create_booking(booking_data)
             imported += 1
@@ -293,6 +366,8 @@ async def get_public_form_config():
         "time_slots": mgr.time_slots,
         "majors": mgr.majors,
         "form_fields": mgr.form_fields,
+        "custom_fields": mgr.custom_fields,
+        "all_fields": mgr.get_all_fields(),
         "success_message": mgr.success_message,
         "subtitle": mgr.subtitle,
         "notice_lines": mgr.notice_lines,

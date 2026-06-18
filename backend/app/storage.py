@@ -54,6 +54,8 @@ class SQLStorage(StorageBackend):
         data = dict(data)
         if isinstance(data.get("booking_date"), str):
             data["booking_date"] = datetime.strptime(data["booking_date"], "%Y-%m-%d").date()
+        if "custom_data" in data and isinstance(data["custom_data"], dict):
+            data["custom_data"] = json.dumps(data["custom_data"], ensure_ascii=False)
         booking = self.Booking(**data)
         db = self.SessionLocal()
         try:
@@ -181,6 +183,7 @@ class JSONStorage(StorageBackend):
             "purpose": data.get("purpose"),
             "phone": data.get("phone"),
             "status": data.get("status", "pending"),
+            "custom_data": data.get("custom_data", "{}"),
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
         }

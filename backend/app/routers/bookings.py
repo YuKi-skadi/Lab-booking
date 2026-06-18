@@ -106,6 +106,7 @@ class BatchBookingCreate(BaseModel):
     slots: ListType[BatchBookingSlot]
     purpose: Optional[str] = None
     phone: Optional[str] = None
+    custom_data: Optional[dict] = None
 
 
 @router.post("/bookings/batch")
@@ -153,6 +154,7 @@ async def create_batch_booking(booking: BatchBookingCreate):
             "end_time": slot.end_time,
             "purpose": booking.purpose,
             "phone": booking.phone,
+            "custom_data": booking.custom_data or {},
             "status": "pending",
         }
         result = await storage.create_booking(data)
@@ -209,6 +211,29 @@ async def update_booking(booking_id: int, booking: BookingUpdate, password: str 
     update_data = {k: v for k, v in booking.model_dump().items() if v is not None}
     result = await storage.update_booking(booking_id, update_data)
     return result
+
+
+class BatchStatusUpdate(BaseModel):
+    ids: ListType[int]
+    status: str
+
+
+@router.put("/bookings/batch-status")
+async def batch_update_status(data: BatchStatusUpdate, password: str = Query(...)):
+    if not get_settings_manager().check_admin_password(password):
+        raise HTTPException(status_code=403, detail="密码错误")
+    if data.status not in ("approved", "rejected", "pending", "cancelled"):
+        raise HTTPException(status_code=400, detail="无效的状态值")
+    if not data.ids:
+        raise HTTPException(status_code=400, detail="请选择至少一条记录")
+
+    storage = get_storage_instance()
+    updated = 0
+    for bid in data.ids:
+        result = await storage.update_booking(bid, {"status": data.status})
+        if result:
+            updated += 1
+    return {"success": True, "updated": updated, "total": len(data.ids)}
 
 
 @router.delete("/bookings/{booking_id}")

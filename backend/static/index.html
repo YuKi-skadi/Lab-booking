@@ -222,6 +222,7 @@
                             <label>借用用途<span class="optional-tag">选填</span></label>
                             <textarea id="purpose" placeholder="请描述借用实验室的用途（选填）"></textarea>
                         </div>
+                        <div id="custom-fields-container"></div>
                     </div>
                 </div>
                 <div style="text-align:center; margin-bottom: 20px;">
@@ -339,6 +340,49 @@
                 }
             }
             document.getElementById('booking_date').setAttribute('min', new Date().toISOString().split('T')[0]);
+
+            // 渲染自定义字段
+            const customContainer = document.getElementById('custom-fields-container');
+            const customs = formConfig.custom_fields || [];
+            if (customs.length) {
+                customContainer.innerHTML = '<div class="form-section"><h3>📎 附加信息</h3>' +
+                    customs.map(cf => renderCustomField(cf)).join('') +
+                    '</div>';
+            } else {
+                customContainer.innerHTML = '';
+            }
+        }
+
+        function renderCustomField(cfg) {
+            const key = cfg.key;
+            const req = cfg.required ? '<span class="required-tag">*必填</span>' : '<span class="optional-tag">选填</span>';
+            const v = cfg.validation || {};
+            const hint = v.hint || '';
+            let input = '';
+
+            if (cfg.type === 'select' && v.options) {
+                input = `<select id="cf_${key}"><option value="">请选择</option>${v.options.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')}</select>`;
+            } else if (cfg.type === 'textarea') {
+                input = `<textarea id="cf_${key}" placeholder="${hint || ''}"></textarea>`;
+            } else {
+                const inputType = cfg.type === 'number' ? 'number' : 'text';
+                let attrs = '';
+                if (v.min_length) attrs += ` minlength="${v.min_length}"`;
+                if (v.max_length) attrs += ` maxlength="${v.max_length}"`;
+                if (v.pattern) attrs += ` pattern="${escAttr(v.pattern)}"`;
+                input = `<input type="${inputType}" id="cf_${key}" placeholder="${hint || ''}"${attrs}>`;
+            }
+            return `<div class="form-group" id="fg-${key}"><label>${cfg.label}${req}</label>${input}</div>`;
+        }
+
+        function getCustomData() {
+            const customs = formConfig?.custom_fields || [];
+            const data = {};
+            for (const cf of customs) {
+                const el = document.getElementById('cf_' + cf.key);
+                if (el) data[cf.key] = el.value.trim();
+            }
+            return data;
         }
 
         function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -445,6 +489,20 @@
             if (validateRequired('phone') && !gv('phone')) { showAlert(`请填写${labels['phone']||'手机号'}`, 'error'); btn.disabled = false; btn.innerHTML = '提交预约'; return; }
             if (validateRequired('purpose') && !gv('purpose')) { showAlert(`请填写${labels['purpose']||'借用用途'}`, 'error'); btn.disabled = false; btn.innerHTML = '提交预约'; return; }
 
+            // 验证自定义字段
+            const customs = formConfig?.custom_fields || [];
+            for (const cf of customs) {
+                if (cf.required) {
+                    const el = document.getElementById('cf_' + cf.key);
+                    if (el && !el.value.trim()) {
+                        showAlert(`请填写${cf.label}`, 'error');
+                        btn.disabled = false; btn.innerHTML = '提交预约'; return;
+                    }
+                }
+            }
+
+            const customData = getCustomData();
+
             const slots = selectedTimeSlots.map(s => {
                 const [st, et] = s.split('-');
                 return { start_time: st, end_time: et };
@@ -453,7 +511,7 @@
             try {
                 const resp = await fetch('/api/bookings/batch', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ student_name: gv('student_name'), student_id: gv('student_id'), major: gv('major'), supervisor: gv('supervisor'), phone: gv('phone') || null, classroom: selectedClassroom, booking_date: gv('booking_date'), slots: slots, purpose: gv('purpose') || null }),
+                    body: JSON.stringify({ student_name: gv('student_name'), student_id: gv('student_id'), major: gv('major'), supervisor: gv('supervisor'), phone: gv('phone') || null, classroom: selectedClassroom, booking_date: gv('booking_date'), slots: slots, purpose: gv('purpose') || null, custom_data: customData }),
                 });
                 const data = await resp.json();
                 if (!resp.ok) { showAlert(data.detail || '提交失败', 'error'); btn.disabled = false; btn.innerHTML = '提交预约'; return; }

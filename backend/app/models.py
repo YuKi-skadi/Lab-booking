@@ -20,10 +20,18 @@ class Booking(Base):
     purpose: Mapped[str] = mapped_column(String(500), nullable=True)
     phone: Mapped[str] = mapped_column(String(20), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="pending")
+    custom_data: Mapped[str] = mapped_column(String(2000), nullable=True, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def to_dict(self):
+        import json
+        cd = {}
+        try:
+            if self.custom_data:
+                cd = json.loads(self.custom_data)
+        except Exception:
+            cd = {}
         return {
             "id": self.id,
             "student_name": self.student_name,
@@ -37,6 +45,7 @@ class Booking(Base):
             "purpose": self.purpose,
             "phone": self.phone,
             "status": self.status,
+            "custom_data": cd,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
