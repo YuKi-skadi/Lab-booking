@@ -123,7 +123,7 @@ JSON_DATA_DIR=./data
 
 ## Agent（LLM）集成
 
-AstrBot 插件位于 `lab-booking-astrbot-plugin/`，提供可视化配置页面和 5 个 LLM Tool：
+配套 AstrBot 插件（独立项目），提供可视化配置页面和 5 个 LLM Tool：
 
 | Tool | 功能 |
 |---|---|
