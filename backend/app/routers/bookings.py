@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional, List
 from datetime import datetime, date
+import json
 
 from ..schemas import BookingCreate, BookingUpdate, BookingResponse, AvailabilityResponse, AdminAuth
 from ..config import settings
@@ -285,6 +286,7 @@ async def import_courses(data: CourseImportRequest, password: str = Query(...)):
         raise HTTPException(status_code=400, detail="开始日期不能晚于结束日期")
 
     storage = get_storage_instance()
+    batch_id = f"course_{int(datetime.utcnow().timestamp())}"
     created = 0
     skipped = 0
     current = start
@@ -310,11 +312,69 @@ async def import_courses(data: CourseImportRequest, password: str = Query(...)):
                     "purpose": data.course_name or "课程安排",
                     "phone": "",
                     "status": "course",
+                    "custom_data": {"_course_batch": batch_id},
                 })
                 created += 1
         current += dt.timedelta(days=1)
 
-    return {"success": True, "created": created, "skipped": skipped}
+    return {"success": True, "created": created, "skipped": skipped, "batch_id": batch_id}
+
+
+@router.get("/admin/courses/batches")
+async def list_course_batches(password: str = Query(...)):
+    if not get_settings_manager().check_admin_password(password):
+        raise HTTPException(status_code=403, detail="密码错误")
+
+    storage = get_storage_instance()
+    all_bookings = await storage.get_all_bookings()
+    course_bookings = [b for b in all_bookings if b.get("status") == "course"]
+    batches = {}
+    for b in course_bookings:
+        cd = b.get("custom_data", {})
+        if isinstance(cd, str):
+            try: cd = json.loads(cd)
+            except: cd = {}
+        bid = cd.get("_course_batch", "unknown")
+        if bid not in batches:
+            batches[bid] = {
+                "batch_id": bid,
+                "classroom": b.get("classroom", ""),
+                "course_name": (b.get("purpose") or "").replace("课程安排", "").strip(),
+                "count": 0,
+                "dates": set(),
+            }
+        batches[bid]["count"] += 1
+        batches[bid]["dates"].add(b.get("booking_date", ""))
+
+    result = []
+    for v in batches.values():
+        dates = sorted(v["dates"])
+        v["date_range"] = f"{dates[0]} ~ {dates[-1]}" if len(dates) > 1 else (dates[0] if dates else "")
+        v.pop("dates")
+        result.append(v)
+
+    return {"batches": sorted(result, key=lambda x: x["batch_id"], reverse=True)}
+
+
+@router.delete("/admin/courses/batches/{batch_id}")
+async def delete_course_batch(batch_id: str, password: str = Query(...)):
+    if not get_settings_manager().check_admin_password(password):
+        raise HTTPException(status_code=403, detail="密码错误")
+    if batch_id == "unknown":
+        raise HTTPException(status_code=400, detail="不能删除旧版课程记录，请在预约管理中逐条删除")
+
+    storage = get_storage_instance()
+    all_bookings = await storage.get_all_bookings()
+    deleted = 0
+    for b in all_bookings:
+        cd = b.get("custom_data", {})
+        if isinstance(cd, str):
+            try: cd = json.loads(cd)
+            except: cd = {}
+        if cd.get("_course_batch") == batch_id and b.get("status") == "course":
+            if await storage.delete_booking(b["id"]):
+                deleted += 1
+    return {"success": True, "deleted": deleted, "batch_id": batch_id}
 
 
 @router.delete("/bookings/{booking_id}")

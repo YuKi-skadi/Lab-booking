@@ -299,6 +299,11 @@
                         <button class="btn btn-primary" onclick="importCourse()">📖 导入课程安排</button>
                         <div id="course-msg"></div>
                     </div>
+
+                    <div class="card" style="margin-top:20px">
+                        <h3>已有课程批次</h3>
+                        <div id="course-batches"><div style="color:var(--text-secondary);padding:8px">加载中...</div></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -751,6 +756,7 @@
                     </label>`
                 ).join('');
             } catch(e) {}
+            loadCourseBatches();
         }
 
         async function importCourse() {
@@ -775,6 +781,39 @@
             const data = await resp.json();
             if (!resp.ok) { msgEl.innerHTML = `<div class="alert alert-error">${data.detail || '导入失败'}</div>`; return; }
             msgEl.innerHTML = `<div class="alert alert-success">✅ 成功创建 ${data.created} 条课程记录${data.skipped ? '，跳过 ' + data.skipped + ' 条冲突' : ''}</div>`;
+            await loadAllData();
+            await loadCourseBatches();
+        }
+
+        async function loadCourseBatches() {
+            const container = document.getElementById('course-batches');
+            try {
+                const resp = await api('/api/admin/courses/batches');
+                const data = await resp.json();
+                if (!data.batches || !data.batches.length) {
+                    container.innerHTML = '<div style="color:var(--text-secondary);padding:8px">暂无课程批次</div>';
+                    return;
+                }
+                container.innerHTML = data.batches.map(b => `
+                    <div class="list-item">
+                        <span>
+                            <strong>${b.course_name || '课程'} (${b.classroom})</strong>
+                            <span style="color:var(--text-secondary);font-size:0.85rem"> - ${b.count}条 | ${b.date_range}</span>
+                            ${b.batch_id === 'unknown' ? '<span style="color:#d97706;font-size:0.8rem">（旧版记录，请在预约管理中删除）</span>' : ''}
+                        </span>
+                        ${b.batch_id !== 'unknown' ? `<button class="btn btn-danger btn-sm" onclick="deleteCourseBatch('${b.batch_id}')">删除批次</button>` : ''}
+                    </div>
+                `).join('');
+            } catch(e) { container.innerHTML = '<div class="alert alert-error">加载失败</div>'; }
+        }
+
+        async function deleteCourseBatch(batchId) {
+            if (!confirm('确认删除该课程批次的所有记录？此操作不可恢复！')) return;
+            const resp = await api('/api/admin/courses/batches/' + batchId, { method: 'DELETE' });
+            const data = await resp.json();
+            if (!resp.ok) { alert(data.detail || '删除失败'); return; }
+            alert(`已删除 ${data.deleted} 条课程记录`);
+            await loadCourseBatches();
             await loadAllData();
         }
     </script>
