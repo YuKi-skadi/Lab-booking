@@ -121,18 +121,6 @@ JSON_DATA_DIR=./data
 | `GET` | `/api/agent/query?date=` | 某日全教室概况 |
 | `GET` | `/api/agent/check?classroom=&date=&start_time=` | 精确可用性检查 |
 
-## Agent（LLM）集成
-
-AstrBot 插件位于 `lab-booking-astrbot-plugin/`，提供可视化配置页面和 5 个 LLM Tool：
-
-| Tool | 功能 |
-|---|---|
-| `query_lab_schedule` | 查某天教室占用（支持上/下午过滤） |
-| `check_lab_availability` | 精确查某教室某时段可用性（支持"第四节课"等口语化表达、别名映射） |
-| `query_my_bookings` | 按学号查个人预约 |
-| `add_lab_booking` | 代学生提交预约 |
-| `list_lab_classrooms` | 列出教室和时段 |
-
 ## 项目结构
 
 ```
