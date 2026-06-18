@@ -124,7 +124,7 @@ class SQLStorage(StorageBackend):
             bookings = db.query(self.Booking).filter(
                 self.Booking.classroom == classroom,
                 self.Booking.booking_date == datetime.strptime(date_str, "%Y-%m-%d").date(),
-                self.Booking.status.in_(["pending", "approved"])
+                self.Booking.status.in_(["pending", "approved", "course"])
             ).all()
             return [b.to_dict() for b in bookings]
         finally:
@@ -238,7 +238,7 @@ class JSONStorage(StorageBackend):
 
     async def check_availability(self, classroom: str, date_str: str) -> List[dict]:
         db = self._read()
-        return [b for b in db["bookings"] if b.get("classroom") == classroom and b.get("booking_date") == date_str and b.get("status") in ("pending", "approved")]
+        return [b for b in db["bookings"] if b.get("classroom") == classroom and b.get("booking_date") == date_str and b.get("status") in ("pending", "approved", "course")]
 
     async def get_all_bookings(self) -> List[dict]:
         db = self._read()

@@ -236,6 +236,87 @@ async def batch_update_status(data: BatchStatusUpdate, password: str = Query(...
     return {"success": True, "updated": updated, "total": len(data.ids)}
 
 
+class BatchDeleteRequest(BaseModel):
+    ids: ListType[int]
+
+
+@router.post("/bookings/batch-delete")
+async def batch_delete_bookings(data: BatchDeleteRequest, password: str = Query(...)):
+    if not get_settings_manager().check_admin_password(password):
+        raise HTTPException(status_code=403, detail="密码错误")
+    if not data.ids:
+        raise HTTPException(status_code=400, detail="请选择至少一条记录")
+
+    storage = get_storage_instance()
+    deleted = 0
+    for bid in data.ids:
+        if await storage.delete_booking(bid):
+            deleted += 1
+    return {"success": True, "deleted": deleted, "total": len(data.ids)}
+
+
+class CourseImportRequest(BaseModel):
+    classroom: str
+    start_date: str
+    end_date: str
+    weekdays: ListType[int]  # 0=Mon ... 6=Sun
+    time_slots: ListType[BatchBookingSlot]
+    course_name: str = ""
+
+
+@router.post("/admin/courses")
+async def import_courses(data: CourseImportRequest, password: str = Query(...)):
+    if not get_settings_manager().check_admin_password(password):
+        raise HTTPException(status_code=403, detail="密码错误")
+
+    valid_rooms = get_classrooms()
+    if data.classroom not in valid_rooms:
+        raise HTTPException(status_code=400, detail=f"无效的教室: {data.classroom}")
+    if not data.weekdays or not data.time_slots:
+        raise HTTPException(status_code=400, detail="请选择星期和时段")
+
+    try:
+        start = datetime.strptime(data.start_date, "%Y-%m-%d").date()
+        end = datetime.strptime(data.end_date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="日期格式错误")
+
+    if start > end:
+        raise HTTPException(status_code=400, detail="开始日期不能晚于结束日期")
+
+    storage = get_storage_instance()
+    created = 0
+    skipped = 0
+    current = start
+
+    import datetime as dt
+    while current <= end:
+        if current.weekday() in data.weekdays:
+            for slot in data.time_slots:
+                conflict = await _check_conflict(storage, data.classroom,
+                    current.isoformat(), slot.start_time, slot.end_time)
+                if conflict:
+                    skipped += 1
+                    continue
+                await storage.create_booking({
+                    "student_name": f"[课程] {data.course_name}" if data.course_name else "[课程]",
+                    "student_id": "COURSE",
+                    "major": "",
+                    "supervisor": "",
+                    "classroom": data.classroom,
+                    "booking_date": current.isoformat(),
+                    "start_time": slot.start_time,
+                    "end_time": slot.end_time,
+                    "purpose": data.course_name or "课程安排",
+                    "phone": "",
+                    "status": "course",
+                })
+                created += 1
+        current += dt.timedelta(days=1)
+
+    return {"success": True, "created": created, "skipped": skipped}
+
+
 @router.delete("/bookings/{booking_id}")
 async def delete_booking(booking_id: int, password: str = Query(...)):
     if not get_settings_manager().check_admin_password(password):
@@ -338,7 +419,7 @@ async def public_schedule(
         for ts in filtered_slots:
             occupied = False
             for b in booked:
-                if b["status"] not in ("pending", "approved"):
+                if b["status"] not in ("pending", "approved", "course"):
                     continue
                 if _time_overlap(ts["start"], ts["end"], b["start_time"], b["end_time"]):
                     occupied = True

@@ -80,7 +80,7 @@ async def agent_query(
 
             is_available = True
             for b in bookings:
-                if b["status"] not in ("pending", "approved"):
+                if b["status"] not in ("pending", "approved", "course"):
                     continue
                 if _time_overlap(requested_s, requested_e, b["start_time"], b["end_time"]):
                     is_available = False
@@ -95,7 +95,7 @@ async def agent_query(
         else:
             room_info = {"classroom": room, "bookings": []}
             for b in bookings:
-                if b["status"] in ("pending", "approved"):
+                if b["status"] in ("pending", "approved", "course"):
                     room_info["bookings"].append({
                         "student_name": b["student_name"],
                         "student_id": b["student_id"],

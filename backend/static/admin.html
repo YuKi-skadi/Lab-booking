@@ -145,6 +145,7 @@
                 <div class="nav-item" onclick="switchPage('formconfig')" data-page="formconfig">⚙️ 表单配置</div>
                 <div class="nav-item" onclick="switchPage('settings')" data-page="settings">🔧 系统设置</div>
                 <div class="nav-item" onclick="switchPage('database')" data-page="database">💾 数据库管理</div>
+                <div class="nav-item" onclick="switchPage('courses')" data-page="courses">📖 排课导入</div>
             </div>
             <div class="main">
                 <!-- Dashboard -->
@@ -168,6 +169,7 @@
                             <span style="font-weight:600;font-size:0.9rem">已选 <span id="selected-count">0</span> 条</span>
                             <button class="btn btn-success btn-sm" onclick="batchUpdateStatus('approved')">✅ 批量通过</button>
                             <button class="btn btn-warning btn-sm" onclick="batchUpdateStatus('rejected')">❌ 批量拒绝</button>
+                            <button class="btn btn-danger btn-sm" onclick="batchDelete()">🗑️ 批量删除</button>
                         </div>
                         <div id="bookings-table" style="overflow-x:auto"></div>
                     </div>
@@ -264,6 +266,40 @@
                         <div id="import-msg"></div>
                     </div>
                 </div>
+
+                <!-- Course Import -->
+                <div class="page" id="page-courses">
+                    <div class="card">
+                        <h3>排课导入</h3>
+                        <p style="color:var(--text-secondary);margin-bottom:16px;font-size:0.9rem">批量标记某一时间段为课程占用，这些时段将在预约查询中显示为"课程"。</p>
+                        <div class="two-col">
+                            <div class="form-group"><label>教室</label><select id="course-room"><option value="">请选择</option></select></div>
+                            <div class="form-group"><label>课程名称</label><input type="text" id="course-name" placeholder="如：高等数学"></div>
+                            <div class="form-group"><label>开始日期</label><input type="date" id="course-start"></div>
+                            <div class="form-group"><label>结束日期</label><input type="date" id="course-end"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>重复星期</label>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="course-wd" value="0"> 周一</label>
+                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="course-wd" value="1"> 周二</label>
+                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="course-wd" value="2"> 周三</label>
+                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="course-wd" value="3"> 周四</label>
+                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="course-wd" value="4"> 周五</label>
+                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="course-wd" value="5"> 周六</label>
+                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="course-wd" value="6"> 周日</label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>占用时段</label>
+                            <div id="course-time-slots" style="display:flex;gap:8px;flex-wrap:wrap">
+                                <div style="color:var(--text-secondary)">请先选择教室和系统设置中的时段</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="importCourse()">📖 导入课程安排</button>
+                        <div id="course-msg"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -308,6 +344,7 @@
             if (page === 'formconfig') loadFormFields();
             if (page === 'settings') loadSettings();
             if (page === 'database') loadDbConfig();
+            if (page === 'courses') loadCoursePage();
         }
 
         function renderDashboard() {
@@ -324,7 +361,7 @@
 
         function renderTable(bookings, compact = false) {
             if (!bookings.length) return '<div style="text-align:center;padding:40px;color:var(--text-secondary)">暂无记录</div>';
-            const sm = { pending: ['待审核','status-pending'], approved: ['已通过','status-approved'], rejected: ['已拒绝','status-rejected'], cancelled: ['已取消','status-cancelled'] };
+            const sm = { pending: ['待审核','status-pending'], approved: ['已通过','status-approved'], rejected: ['已拒绝','status-rejected'], cancelled: ['已取消','status-cancelled'], course: ['课程','status-approved'] };
             const chkAll = compact ? '' : '<th style="width:36px"><input type="checkbox" id="select-all" onclick="toggleSelectAll(this)"></th>';
             const h = compact ? '<tr><th>教室</th><th>日期</th><th>时间</th><th>学生</th><th>状态</th></tr>' : `<tr>${chkAll}<th>ID</th><th>姓名</th><th>学号</th><th>专业</th><th>教师</th><th>教室</th><th>日期</th><th>时间</th><th>用途</th><th>状态</th><th>操作</th></tr>`;
             let html = `<table>${h}`;
@@ -382,9 +419,23 @@
         async function batchUpdateStatus(status) {
             const ids = getSelectedIds();
             if (!ids.length) return;
-            const labels = { approved: '通过', rejected: '拒绝' };
-            if (!confirm(`确认批量${labels[status] || status} ${ids.length} 条记录？`)) return;
-            await api('/api/bookings/batch-status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids, status }) });
+            const labels = { approved: '批量通过', rejected: '批量拒绝' };
+            if (!confirm(`确认${labels[status] || '批量' + status} ${ids.length} 条记录？`)) return;
+            const resp = await api('/api/bookings/batch-status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids, status }) });
+            const data = await resp.json();
+            if (!resp.ok) { alert(data.detail || '操作失败'); return; }
+            alert(`成功更新 ${data.updated}/${data.total} 条`);
+            await loadAllData();
+        }
+
+        async function batchDelete() {
+            const ids = getSelectedIds();
+            if (!ids.length) return;
+            if (!confirm(`确认删除 ${ids.length} 条记录？此操作不可恢复！`)) return;
+            const resp = await api('/api/bookings/batch-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
+            const data = await resp.json();
+            if (!resp.ok) { alert(data.detail || '操作失败'); return; }
+            alert(`成功删除 ${data.deleted}/${data.total} 条`);
             await loadAllData();
         }
 
@@ -676,6 +727,55 @@
             } else {
                 msgEl.innerHTML = `<div class="alert alert-error">导入失败：${data.detail || '未知错误'}</div>`;
             }
+        }
+
+        // ==================== Course Import ====================
+        async function loadCoursePage() {
+            // Load classrooms
+            try {
+                const resp = await api('/api/admin/classrooms');
+                const data = await resp.json();
+                document.getElementById('course-room').innerHTML = '<option value="">请选择教室</option>' +
+                    data.classrooms.map(c => `<option value="${c}">${c}</option>`).join('');
+            } catch(e) {}
+
+            // Load time slots
+            try {
+                const resp = await fetch('/api/admin/public/form-config');
+                const config = await resp.json();
+                const slots = config.time_slots || [];
+                document.getElementById('course-time-slots').innerHTML = slots.map((s, i) =>
+                    `<label style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:6px 10px;border:1px solid var(--border);border-radius:6px">
+                        <input type="checkbox" class="course-ts" value="${i}" data-start="${s.start}" data-end="${s.end}">
+                        ${s.start}-${s.end} ${s.remark ? '('+s.remark+')' : ''}
+                    </label>`
+                ).join('');
+            } catch(e) {}
+        }
+
+        async function importCourse() {
+            const room = document.getElementById('course-room').value;
+            const name = document.getElementById('course-name').value.trim();
+            const start = document.getElementById('course-start').value;
+            const end = document.getElementById('course-end').value;
+            const wds = Array.from(document.querySelectorAll('.course-wd:checked')).map(cb => parseInt(cb.value));
+            const slots = Array.from(document.querySelectorAll('.course-ts:checked')).map(cb => ({
+                start_time: cb.dataset.start,
+                end_time: cb.dataset.end,
+            }));
+            const msgEl = document.getElementById('course-msg');
+
+            if (!room) { msgEl.innerHTML = '<div class="alert alert-error">请选择教室</div>'; return; }
+            if (!start || !end) { msgEl.innerHTML = '<div class="alert alert-error">请选择日期范围</div>'; return; }
+            if (!wds.length) { msgEl.innerHTML = '<div class="alert alert-error">请选择重复星期</div>'; return; }
+            if (!slots.length) { msgEl.innerHTML = '<div class="alert alert-error">请选择时段</div>'; return; }
+
+            const body = { classroom: room, start_date: start, end_date: end, weekdays: wds, time_slots: slots, course_name: name };
+            const resp = await api('/api/admin/courses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const data = await resp.json();
+            if (!resp.ok) { msgEl.innerHTML = `<div class="alert alert-error">${data.detail || '导入失败'}</div>`; return; }
+            msgEl.innerHTML = `<div class="alert alert-success">✅ 成功创建 ${data.created} 条课程记录${data.skipped ? '，跳过 ' + data.skipped + ' 条冲突' : ''}</div>`;
+            await loadAllData();
         }
     </script>
 </body>
