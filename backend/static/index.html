@@ -328,7 +328,7 @@
             document.getElementById('classroom-grid').innerHTML = formConfig.classrooms.map(c =>
                 `<div class="classroom-card" onclick="selectClassroom('${escapeHtml(c)}')" data-room="${escapeHtml(c)}">${escapeHtml(c)}</div>`
             ).join('');
-            // 字段标签
+            // 字段标签 + 校验规则
             for (const [key, cfg] of Object.entries(formConfig.form_fields)) {
                 const fg = document.getElementById('fg-' + key);
                 if (!fg || !fg.querySelector('label')) continue;
@@ -337,6 +337,20 @@
                     label.innerHTML = cfg.label + '<span class="required-tag">*必填</span>';
                 } else {
                     label.innerHTML = cfg.label + '<span class="optional-tag">选填</span>';
+                }
+                // 应用校验规则
+                const inp = fg.querySelector('input');
+                if (inp && cfg.validation) {
+                    const v = cfg.validation;
+                    if (v.pattern) inp.setAttribute('pattern', v.pattern);
+                    if (v.min_length) inp.setAttribute('minlength', v.min_length);
+                    if (v.max_length) inp.setAttribute('maxlength', v.max_length);
+                    if (v.hint) inp.setAttribute('title', v.hint);
+                }
+                // 类型转换
+                if (inp && cfg.type === 'number') {
+                    inp.setAttribute('type', 'number');
+                    inp.setAttribute('inputmode', 'numeric');
                 }
             }
             document.getElementById('booking_date').setAttribute('min', new Date().toISOString().split('T')[0]);

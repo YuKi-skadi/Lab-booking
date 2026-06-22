@@ -191,29 +191,6 @@ async def get_all_bookings(password: str = Query(...)):
     return await storage.get_all_bookings()
 
 
-@router.get("/bookings/{booking_id}", response_model=BookingResponse)
-async def get_booking(booking_id: int):
-    storage = get_storage_instance()
-    result = await storage.get_booking(booking_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="预约记录不存在")
-    return result
-
-
-@router.put("/bookings/{booking_id}", response_model=BookingResponse)
-async def update_booking(booking_id: int, booking: BookingUpdate, password: str = Query(...)):
-    if not get_settings_manager().check_admin_password(password):
-        raise HTTPException(status_code=403, detail="密码错误")
-    storage = get_storage_instance()
-    existing = await storage.get_booking(booking_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="预约记录不存在")
-
-    update_data = {k: v for k, v in booking.model_dump().items() if v is not None}
-    result = await storage.update_booking(booking_id, update_data)
-    return result
-
-
 class BatchStatusUpdate(BaseModel):
     ids: ListType[int]
     status: str
@@ -254,6 +231,29 @@ async def batch_delete_bookings(data: BatchDeleteRequest, password: str = Query(
         if await storage.delete_booking(bid):
             deleted += 1
     return {"success": True, "deleted": deleted, "total": len(data.ids)}
+
+
+@router.get("/bookings/{booking_id}", response_model=BookingResponse)
+async def get_booking(booking_id: int):
+    storage = get_storage_instance()
+    result = await storage.get_booking(booking_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="预约记录不存在")
+    return result
+
+
+@router.put("/bookings/{booking_id}", response_model=BookingResponse)
+async def update_booking(booking_id: int, booking: BookingUpdate, password: str = Query(...)):
+    if not get_settings_manager().check_admin_password(password):
+        raise HTTPException(status_code=403, detail="密码错误")
+    storage = get_storage_instance()
+    existing = await storage.get_booking(booking_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="预约记录不存在")
+
+    update_data = {k: v for k, v in booking.model_dump().items() if v is not None}
+    result = await storage.update_booking(booking_id, update_data)
+    return result
 
 
 class CourseImportRequest(BaseModel):
