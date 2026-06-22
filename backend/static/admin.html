@@ -856,12 +856,18 @@
         }
 
         function renderCourseBookings() {
-            const bookings = allBookings.filter(b => b.status === 'course');
+            let bookings = allBookings.filter(b => b.status === 'course');
             if (!bookings.length) {
                 document.getElementById('course-bookings-table').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">暂无排课记录</div>';
                 return;
             }
-            let html = '<table><tr><th>ID</th><th>教室</th><th>日期</th><th>时间</th><th>课程名</th><th>操作</th></tr>';
+            // Sort
+            bookings = [...bookings].sort((a, b) => {
+                const va = a[sortField] || '', vb = b[sortField] || '';
+                return sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+            });
+            const mk = (label, field) => `<span style="cursor:pointer" onclick="sortBy('${field}')">${label}${sortField === field ? (sortAsc ? ' ▲' : ' ▼') : ''}</span>`;
+            let html = `<table><tr><th>${mk('ID','id')}</th><th>${mk('教室','classroom')}</th><th>${mk('日期','booking_date')}</th><th>时间</th><th>课程名</th><th>操作</th></tr>`;
             for (const b of bookings) {
                 html += `<tr>
                     <td>${b.id}</td><td>${b.classroom}</td><td>${b.booking_date}</td>
