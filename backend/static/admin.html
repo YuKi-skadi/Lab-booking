@@ -448,6 +448,7 @@
             if (sortField === field) { sortAsc = !sortAsc; }
             else { sortField = field; sortAsc = true; }
             if (document.getElementById('page-bookings').classList.contains('active')) renderBookingsTable();
+            else if (document.getElementById('page-coursebookings').classList.contains('active')) renderCourseBookings();
             else renderDashboard();
         }
         function updateBatchBar() {
