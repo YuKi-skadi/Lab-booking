@@ -71,8 +71,21 @@ class SettingsManager:
             self._data = {**DEFAULT_SETTINGS, **stored}
         else:
             self._data = dict(DEFAULT_SETTINGS)
-            self.save()
+        self._deep_merge_defaults()
+        self.save()
         return self._data
+
+    def _deep_merge_defaults(self):
+        """为旧 setting 补充缺失的默认值（如校验规则）"""
+        # Merge form_fields validation
+        default_fields = DEFAULT_SETTINGS.get("form_fields", {})
+        current_fields = self._data.get("form_fields", {})
+        for key, default_cfg in default_fields.items():
+            if key in current_fields:
+                if "validation" not in current_fields[key]:
+                    current_fields[key]["validation"] = default_cfg.get("validation", {})
+                if "type" not in current_fields[key]:
+                    current_fields[key]["type"] = default_cfg.get("type", "text")
 
     def save(self):
         tmp = SETTINGS_FILE + ".tmp"

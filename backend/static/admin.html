@@ -322,6 +322,8 @@
     <script>
         let adminPassword = '';
         let allBookings = [];
+        let sortField = 'id';
+        let sortAsc = true;
 
         async function login() {
             const pwd = document.getElementById('admin-password').value;
@@ -378,8 +380,27 @@
         function renderTable(bookings, compact = false) {
             if (!bookings.length) return '<div style="text-align:center;padding:40px;color:var(--text-secondary)">暂无记录</div>';
             const sm = { pending: ['待审核','status-pending'], approved: ['已通过','status-approved'], rejected: ['已拒绝','status-rejected'], cancelled: ['已取消','status-cancelled'], course: ['课程','status-approved'] };
+
+            if (!compact) {
+                // Sort
+                const keyMap = { 'ID': 'id', '姓名': 'student_name', '学号': 'student_id', '专业': 'major', '教师': 'supervisor', '教室': 'classroom', '日期': 'booking_date', '时间': 'start_time', '状态': 'status' };
+                const sk = keyMap[Object.keys(keyMap).find(k => keyMap[k] === sortField)] || sortField;
+                const fieldName = Object.keys(keyMap).find(k => keyMap[k] === sortField) || sortField;
+                bookings = [...bookings].sort((a, b) => {
+                    const va = a[sortField] || '', vb = b[sortField] || '';
+                    return sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+                });
+            }
+
+            const mkSort = (label, field) => {
+                if (compact) return label;
+                const arrow = sortField === field ? (sortAsc ? ' ▲' : ' ▼') : '';
+                return `<span style="cursor:pointer" onclick="sortBy('${field}')">${label}${arrow}</span>`;
+            };
+
             const chkAll = compact ? '' : '<th style="width:36px"><input type="checkbox" id="select-all" onclick="toggleSelectAll(this)"></th>';
-            const h = compact ? '<tr><th>教室</th><th>日期</th><th>时间</th><th>学生</th><th>状态</th></tr>' : `<tr>${chkAll}<th>ID</th><th>姓名</th><th>学号</th><th>专业</th><th>教师</th><th>教室</th><th>日期</th><th>时间</th><th>用途</th><th>状态</th><th>操作</th></tr>`;
+            const h = compact ? `<tr><th>${mkSort('教室','classroom')}</th><th>${mkSort('日期','booking_date')}</th><th>时间</th><th>学生</th><th>状态</th></tr>`
+                : `<tr>${chkAll}<th>${mkSort('ID','id')}</th><th>${mkSort('姓名','student_name')}</th><th>${mkSort('学号','student_id')}</th><th>${mkSort('专业','major')}</th><th>${mkSort('教师','supervisor')}</th><th>${mkSort('教室','classroom')}</th><th>${mkSort('日期','booking_date')}</th><th>时间</th><th style="max-width:120px">用途</th><th>${mkSort('状态','status')}</th><th>操作</th></tr>`;
             let html = `<table>${h}`;
             for (const b of bookings) {
                 const [st, sc] = sm[b.status] || ['未知',''];
@@ -410,7 +431,7 @@
             if (room) params.set('classroom', room);
             if (status) params.set('status', status);
             if (student) params.set('student_id', student);
-            document.getElementById('bookings-table').innerHTML = renderTable(await (await api('/api/bookings?' + params)).json());
+            document.getElementById('bookings-table').innerHTML = renderTable((await (await api('/api/bookings?' + params)).json()).filter(b => b.status !== 'course'));
             document.getElementById('batch-actions').style.display = 'none';
         }
         function renderBookingsTable() { document.getElementById('bookings-table').innerHTML = renderTable(allBookings.filter(b => b.status !== 'course')); document.getElementById('batch-actions').style.display = 'none'; }
@@ -422,6 +443,12 @@
         function toggleSelectAll(el) {
             document.querySelectorAll('.booking-cb').forEach(cb => cb.checked = el.checked);
             updateBatchBar();
+        }
+        function sortBy(field) {
+            if (sortField === field) { sortAsc = !sortAsc; }
+            else { sortField = field; sortAsc = true; }
+            if (document.getElementById('page-bookings').classList.contains('active')) renderBookingsTable();
+            else renderDashboard();
         }
         function updateBatchBar() {
             const checked = document.querySelectorAll('.booking-cb:checked');
