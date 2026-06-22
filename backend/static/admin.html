@@ -146,6 +146,7 @@
                 <div class="nav-item" onclick="switchPage('settings')" data-page="settings">🔧 系统设置</div>
                 <div class="nav-item" onclick="switchPage('database')" data-page="database">💾 数据库管理</div>
                 <div class="nav-item" onclick="switchPage('courses')" data-page="courses">📖 排课导入</div>
+                <div class="nav-item" onclick="switchPage('coursebookings')" data-page="coursebookings">📋 排课记录</div>
             </div>
             <div class="main">
                 <!-- Dashboard -->
@@ -305,6 +306,15 @@
                         <div id="course-batches"><div style="color:var(--text-secondary);padding:8px">加载中...</div></div>
                     </div>
                 </div>
+
+                <!-- Course Bookings -->
+                <div class="page" id="page-coursebookings">
+                    <div class="card">
+                        <h3>排课记录</h3>
+                        <p style="color:var(--text-secondary);margin-bottom:12px;font-size:0.9rem">通过排课导入生成的课程占用记录，不可审批，仅可删除。</p>
+                        <div id="course-bookings-table" style="overflow-x:auto"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -350,6 +360,7 @@
             if (page === 'settings') loadSettings();
             if (page === 'database') loadDbConfig();
             if (page === 'courses') loadCoursePage();
+            if (page === 'coursebookings') renderCourseBookings();
         }
 
         function renderDashboard() {
@@ -402,7 +413,7 @@
             document.getElementById('bookings-table').innerHTML = renderTable(await (await api('/api/bookings?' + params)).json());
             document.getElementById('batch-actions').style.display = 'none';
         }
-        function renderBookingsTable() { document.getElementById('bookings-table').innerHTML = renderTable(allBookings); document.getElementById('batch-actions').style.display = 'none'; }
+        function renderBookingsTable() { document.getElementById('bookings-table').innerHTML = renderTable(allBookings.filter(b => b.status !== 'course')); document.getElementById('batch-actions').style.display = 'none'; }
         function clearFilters() { ['filter-date','filter-room','filter-status','filter-student'].forEach(id => document.getElementById(id).value = ''); renderBookingsTable(); }
         async function approveBooking(id) { if (!confirm('确认通过？')) return; await api(`/api/bookings/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'approved' }) }); await loadAllData(); }
         async function rejectBooking(id) { if (!confirm('确认拒绝/撤销？')) return; await api(`/api/bookings/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'rejected' }) }); await loadAllData(); }
@@ -428,7 +439,7 @@
             if (!confirm(`确认${labels[status] || '批量' + status} ${ids.length} 条记录？`)) return;
             const resp = await api('/api/bookings/batch-status', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids, status }) });
             const data = await resp.json();
-            if (!resp.ok) { alert(data.detail || '操作失败'); return; }
+            if (!resp.ok) { alert(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail || '操作失败')); return; }
             alert(`成功更新 ${data.updated}/${data.total} 条`);
             await loadAllData();
         }
@@ -439,7 +450,7 @@
             if (!confirm(`确认删除 ${ids.length} 条记录？此操作不可恢复！`)) return;
             const resp = await api('/api/bookings/batch-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
             const data = await resp.json();
-            if (!resp.ok) { alert(data.detail || '操作失败'); return; }
+            if (!resp.ok) { alert(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail || '操作失败')); return; }
             alert(`成功删除 ${data.deleted}/${data.total} 条`);
             await loadAllData();
         }
@@ -811,10 +822,28 @@
             if (!confirm('确认删除该课程批次的所有记录？此操作不可恢复！')) return;
             const resp = await api('/api/admin/courses/batches/' + batchId, { method: 'DELETE' });
             const data = await resp.json();
-            if (!resp.ok) { alert(data.detail || '删除失败'); return; }
+            if (!resp.ok) { alert(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail || '删除失败')); return; }
             alert(`已删除 ${data.deleted} 条课程记录`);
             await loadCourseBatches();
             await loadAllData();
+        }
+
+        function renderCourseBookings() {
+            const bookings = allBookings.filter(b => b.status === 'course');
+            if (!bookings.length) {
+                document.getElementById('course-bookings-table').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">暂无排课记录</div>';
+                return;
+            }
+            let html = '<table><tr><th>ID</th><th>教室</th><th>日期</th><th>时间</th><th>课程名</th><th>操作</th></tr>';
+            for (const b of bookings) {
+                html += `<tr>
+                    <td>${b.id}</td><td>${b.classroom}</td><td>${b.booking_date}</td>
+                    <td>${b.start_time}-${b.end_time}</td><td>${b.purpose || '-'}</td>
+                    <td><button class="btn btn-danger btn-sm" onclick="deleteBooking(${b.id})">删除</button></td>
+                </tr>`;
+            }
+            html += '</table>';
+            document.getElementById('course-bookings-table').innerHTML = html;
         }
     </script>
 </body>

@@ -417,16 +417,19 @@ async def check_availability(classroom: str = Query(...), date: str = Query(...)
     for ts in get_time_slots():
         is_available = True
         booked_by = None
+        occupying_status = None
         for b in booked:
             if _time_overlap(ts["start"], ts["end"], b["start_time"], b["end_time"]):
                 is_available = False
                 booked_by = f"{b['student_name']}({b['student_id']})"
+                occupying_status = b.get("status", "")
                 break
         slots.append({
             "start": ts["start"],
             "end": ts["end"],
             "available": is_available,
             "booked_by": booked_by,
+            "occupying_status": occupying_status,
         })
 
     return {
@@ -478,11 +481,13 @@ async def public_schedule(
         slots_status = []
         for ts in filtered_slots:
             occupied = False
+            occupying_status = None
             for b in booked:
                 if b["status"] not in ("pending", "approved", "course"):
                     continue
                 if _time_overlap(ts["start"], ts["end"], b["start_time"], b["end_time"]):
                     occupied = True
+                    occupying_status = b.get("status", "")
                     break
             slots_status.append({
                 "start": ts["start"],
@@ -490,6 +495,7 @@ async def public_schedule(
                 "remark": ts.get("remark", ""),
                 "slot": ts.get("slot", f"{ts['start']}-{ts['end']}"),
                 "available": not occupied,
+                "occupying_status": occupying_status,
             })
 
         result["classrooms"].append({

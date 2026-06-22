@@ -445,7 +445,7 @@
                         return `<div class="time-slot unavailable">
                             ${slot.start} ~ ${slot.end}
                             ${remark ? `<div class="slot-remark">${escapeHtml(remark)}</div>` : ''}
-                            <span class="booked-info">${slot.booked_by || '已占用'}</span>
+                            <span class="booked-info">${slot.occupying_status === 'course' ? '课程使用' : (slot.booked_by || '已占用')}</span>
                         </div>`;
                     }
                 }).join('');
@@ -577,7 +577,7 @@
                         ${c.slots.map(s => `
                             <div class="schedule-slot">
                                 <span>${s.start} ~ ${s.end}${s.remark ? ` <span style="color:var(--text-secondary)">${escapeHtml(s.remark)}</span>` : ''}</span>
-                                ${s.available ? '<span class="slot-free">空闲</span>' : '<span class="slot-occupied">已占用</span>'}
+                                ${s.available ? '<span class="slot-free">空闲</span>' : (s.occupying_status === 'course' ? '<span class="slot-occupied">课程使用</span>' : '<span class="slot-occupied">已占用</span>')}
                             </div>
                         `).join('')}
                     </div>
