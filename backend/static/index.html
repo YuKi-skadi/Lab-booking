@@ -155,9 +155,342 @@
             .time-slots { grid-template-columns: repeat(2, 1fr); }
             .card { padding: 20px; }
         }
+
+        /* Fluent 2 / Soft UI Evolution: public booking experience */
+        :root {
+            --primary: #0d9488;
+            --primary-hover: #0f766e;
+            --success: #0f766e;
+            --danger: #dc2626;
+            --warning: #d97706;
+            --bg: #f2f8f9;
+            --card-bg: #ffffff;
+            --text: #12343b;
+            --text-secondary: #617981;
+            --border: #d7e6e9;
+            --radius: 14px;
+            --shadow: 0 2px 6px rgba(20, 67, 75, 0.08), 0 12px 28px rgba(20, 67, 75, 0.05);
+            --focus-ring: 0 0 0 3px rgba(13, 148, 136, 0.22);
+        }
+
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: "Segoe UI Variable", "Inter", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+        .header {
+            background: #ffffff;
+            color: var(--text);
+            padding: 24px 16px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 2px 12px rgba(20, 67, 75, 0.05);
+        }
+        .header h1, .header p {
+            width: min(780px, 100%);
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .header h1 { font-size: clamp(1.45rem, 4vw, 1.85rem); letter-spacing: -0.02em; }
+        .header p { color: var(--text-secondary); font-size: 0.95rem; }
+        .container { width: min(860px, 100%); padding: 16px; }
+        .tabs {
+            gap: 6px;
+            padding: 6px;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 8px rgba(20, 67, 75, 0.06);
+        }
+        .tab {
+            min-height: 48px;
+            padding: 11px 10px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            touch-action: manipulation;
+        }
+        .tab.active { background: var(--primary); box-shadow: 0 4px 10px rgba(13, 148, 136, 0.2); }
+        .tab:hover:not(.active) { background: #eef8f7; color: var(--primary-hover); }
+        .card {
+            border: 1px solid rgba(215, 230, 233, 0.9);
+            box-shadow: var(--shadow);
+            padding: clamp(20px, 4vw, 32px);
+        }
+        .card h2 { color: var(--text); letter-spacing: -0.015em; }
+        .form-section { margin-bottom: 24px; padding-bottom: 8px; border-bottom-color: var(--border); }
+        .form-section h3 { color: var(--primary-hover); font-size: 1.05rem; letter-spacing: 0.01em; }
+        .form-group label { color: var(--text); font-size: 0.92rem; }
+        .form-group input, .form-group select, .form-group textarea,
+        #schedule-date, #search_student_id {
+            min-height: 48px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #fbfefe;
+            color: var(--text);
+            transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus,
+        #schedule-date:focus, #search_student_id:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: var(--focus-ring);
+            background: #ffffff;
+        }
+        .form-group input::placeholder, .form-group textarea::placeholder,
+        #search_student_id::placeholder { color: #8aa0a5; }
+        .classroom-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+        .classroom-card {
+            min-height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            background: #ffffff;
+            box-shadow: 0 1px 2px rgba(20, 67, 75, 0.04);
+            transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+            touch-action: manipulation;
+        }
+        .classroom-card:hover { border-color: #7dd3cc; background: #f0fdfa; box-shadow: 0 5px 14px rgba(13, 148, 136, 0.1); transform: translateY(-1px); }
+        .classroom-card.selected { border-color: var(--primary); background: #e6f7f5; color: var(--primary-hover); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12); }
+        .time-slots { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+        .time-slot {
+            min-height: 56px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #ffffff;
+            touch-action: manipulation;
+        }
+        .time-slot:hover:not(.unavailable) { border-color: #7dd3cc; background: #f0fdfa; }
+        .time-slot.selected { border-color: var(--primary); background: #dff7f3; color: var(--primary-hover); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1); }
+        .time-slot .slot-remark { color: var(--text-secondary); line-height: 1.35; }
+        .btn {
+            min-height: 48px;
+            border-radius: 10px;
+            font-size: 0.98rem;
+            touch-action: manipulation;
+            transition: background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+        }
+        .btn:hover:not(:disabled) { transform: translateY(-1px); }
+        .btn:focus-visible, .tab:focus-visible, .classroom-card:focus-visible, .time-slot:focus-visible {
+            outline: 3px solid rgba(13, 148, 136, 0.42);
+            outline-offset: 2px;
+        }
+        .btn-primary { background: var(--primary); box-shadow: 0 5px 12px rgba(13, 148, 136, 0.18); }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+        .alert { border-radius: 10px; }
+        .success-page .icon { color: var(--primary); }
+        .success-mark {
+            display: grid;
+            place-items: center;
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 16px;
+            border-radius: 50%;
+            background: #dff7f3;
+            color: var(--primary-hover);
+            font-size: 2.8rem;
+            font-weight: 700;
+        }
+        .notice-icon {
+            display: inline-grid;
+            place-items: center;
+            width: 22px;
+            height: 22px;
+            margin-right: 6px;
+            border-radius: 50%;
+            background: #f2c66d;
+            color: #6b4a0a;
+            font-size: 0.82rem;
+            font-weight: 800;
+        }
+        .notice-box { border-radius: 12px; background: #fffbeb; border-color: #f2c66d; }
+        .schedule-room, .booking-item { border-color: var(--border); border-radius: 10px; background: #ffffff; }
+        .schedule-room { box-shadow: 0 1px 4px rgba(20, 67, 75, 0.05); }
+        .empty-state { padding: 48px 20px; }
+
+        @media (max-width: 640px) {
+            body { font-size: 16px; }
+            .header { padding: 20px 16px 16px; }
+            .container { padding: 12px; }
+            .tabs { position: sticky; top: 8px; z-index: 5; margin-bottom: 14px; }
+            .tab { font-size: 0.84rem; padding: 10px 4px; }
+            .card { padding: 18px 16px; margin-bottom: 14px; }
+            .form-row { gap: 0; }
+            .form-group { margin-bottom: 18px; }
+            .classroom-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+            .classroom-card { min-height: 58px; padding: 10px 6px; font-size: 0.9rem; }
+            .time-slots { grid-template-columns: 1fr; }
+            .time-slot { min-height: 58px; }
+            #submit-btn { width: 100%; }
+            #tab-schedule .card > div[style*="display:flex"], #tab-mybookings .card > div[style*="display:flex"] { flex-direction: column; }
+            #tab-schedule .card > div[style*="display:flex"] .btn, #tab-mybookings .card > div[style*="display:flex"] .btn { width: 100% !important; }
+            .booking-item { align-items: flex-start; gap: 12px; flex-direction: column; }
+            .success-page { padding: 26px 4px; }
+            .success-page > div[style*="display:flex"] { flex-direction: column; gap: 8px !important; }
+            .success-page > div[style*="display:flex"] .btn { width: 100% !important; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+        }
+        /* Cyan-blue theme and flat monochrome icon system */
+        :root {
+            --primary: #0284c7;
+            --primary-hover: #0369a1;
+            --bg: #f1f8fc;
+            --text: #12364a;
+            --text-secondary: #5f7887;
+            --border: #d4e5ee;
+            --focus-ring: 0 0 0 3px rgba(2, 132, 199, 0.22);
+        }
+        .header { text-align: center; background: #ffffff; }
+        .header h1, .header p { margin-left: auto; margin-right: auto; }
+        .header #header-subtitle { opacity: 1; }
+        .tab.active { box-shadow: 0 4px 10px rgba(2, 132, 199, 0.2); }
+        .tab:hover:not(.active) { background: #eaf6fc; color: var(--primary-hover); }
+        .ui-icon {
+            display: inline-grid;
+            place-items: center;
+            width: 18px;
+            height: 18px;
+            flex: 0 0 18px;
+            color: var(--primary);
+        }
+        .ui-icon svg, .room-icon svg {
+            width: 100%;
+            height: 100%;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .tab { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+        .tab.active .ui-icon { color: #ffffff; }
+        .form-section h3 { display: flex; align-items: center; gap: 8px; color: var(--primary-hover); }
+        .card h2 { display: flex; align-items: center; gap: 8px; }
+        .room-icon {
+            display: inline-grid;
+            place-items: center;
+            width: 21px;
+            height: 21px;
+            margin-right: 6px;
+            color: var(--primary);
+            flex: 0 0 21px;
+        }
+        .classroom-card { gap: 4px; }
+        .classroom-card.selected .room-icon { color: var(--primary-hover); }
+        .classroom-card:hover { border-color: #7dd3fc; background: #f0f9ff; box-shadow: 0 5px 14px rgba(2, 132, 199, 0.1); }
+        .classroom-card.selected { border-color: var(--primary); background: #e0f2fe; color: var(--primary-hover); box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12); }
+        .time-slot:hover:not(.unavailable) { border-color: #7dd3fc; background: #f0f9ff; }
+        .time-slot.selected { border-color: var(--primary); background: #e0f2fe; color: var(--primary-hover); box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1); }
+        .btn-primary { background: var(--primary); box-shadow: 0 5px 12px rgba(2, 132, 199, 0.18); }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+        .btn:focus-visible, .tab:focus-visible, .classroom-card:focus-visible, .time-slot:focus-visible { outline-color: rgba(2, 132, 199, 0.42); }
+        .success-mark { background: #e0f2fe; color: var(--primary-hover); }
+        .notice-icon { color: #6b4a0a; }
+        @media (max-width: 640px) {
+            .tab { font-size: 0.84rem; padding: 10px 4px; gap: 5px; }
+            .ui-icon { width: 16px; height: 16px; flex-basis: 16px; }
+            .header h1 { font-size: 1.4rem; }
+        }
+
+        /* WeChat guidance: informational only, never force an external redirect. */
+        body.wechat-guide-open { overflow: hidden; }
+        .wechat-guide {
+            position: fixed; inset: 0; z-index: 1000; display: none; overflow-y: auto;
+            align-items: center; justify-content: center; padding: 20px 14px;
+            background: linear-gradient(145deg, #eaf7fc 0%, #f7fbfd 56%, #e5f3fa 100%);
+        }
+        .wechat-guide.is-visible { display: flex; }
+        .wechat-guide__sheet {
+            width: min(620px, 100%); padding: clamp(22px, 5vw, 38px);
+            border: 1px solid #cbe5f2; border-radius: 24px; background: rgba(255,255,255,.96);
+            box-shadow: 0 20px 60px rgba(13, 86, 119, .16);
+        }
+        .wechat-guide__eyebrow {
+            display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px;
+            border-radius: 999px; background: #e0f2fe; color: #0369a1;
+            font-size: .78rem; font-weight: 800; letter-spacing: .04em;
+        }
+        .wechat-guide__eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: #0284c7; }
+        .wechat-guide h2 { margin: 16px 0 8px; color: #12364a; font-size: clamp(1.35rem, 4vw, 1.8rem); letter-spacing: -.02em; }
+        .wechat-guide__lead { color: #5f7887; font-size: .94rem; line-height: 1.75; }
+        .wechat-guide__steps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 24px 0 20px; }
+        .wechat-guide__step {
+            min-width: 0; padding: 14px; border: 1px solid #d5e9f3; border-radius: 16px; background: #fafdff;
+        }
+        .wechat-guide__step-number {
+            display: grid; place-items: center; width: 25px; height: 25px; margin-bottom: 10px;
+            border-radius: 8px; background: #0284c7; color: #fff; font-size: .78rem; font-weight: 800;
+        }
+        .wechat-guide__step h3 { margin-bottom: 5px; color: #12364a; font-size: .95rem; }
+        .wechat-guide__step p { color: #6b8491; font-size: .78rem; line-height: 1.55; }
+        .wechat-guide__mock {
+            height: 100px; margin-bottom: 12px; overflow: hidden; border: 1px solid #cfe4ee;
+            border-radius: 11px; background: #fff; box-shadow: 0 3px 10px rgba(20,67,75,.06);
+        }
+        .wechat-guide__mock-bar { display: flex; align-items: center; justify-content: space-between; height: 25px; padding: 0 9px; background: #f1f8fc; color: #7090a0; font-size: .64rem; }
+        .wechat-guide__dots { display: flex; gap: 3px; }
+        .wechat-guide__dots i { width: 3px; height: 3px; border-radius: 50%; background: #0f6f9d; }
+        .wechat-guide__mock-body { padding: 10px; color: #8aa0a5; font-size: .64rem; }
+        .wechat-guide__mock-line { width: 72%; height: 7px; margin-bottom: 7px; border-radius: 999px; background: #dff0f7; }
+        .wechat-guide__mock-menu { padding: 7px 9px; color: #12364a; font-size: .68rem; background: #e0f2fe; border-left: 3px solid #0284c7; }
+        .wechat-guide__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .wechat-guide__actions .btn { flex: 1 1 180px; min-height: 46px; }
+        .wechat-guide__copy-status { min-height: 1.35em; margin-top: 10px; color: #0f766e; font-size: .8rem; text-align: center; }
+        .wechat-guide__fine-print { margin-top: 2px; color: #8aa0a5; font-size: .75rem; line-height: 1.6; text-align: center; }
+        @media (max-width: 480px) {
+            .wechat-guide { align-items: flex-start; padding: 12px; }
+            .wechat-guide__sheet { border-radius: 20px; }
+            .wechat-guide__steps { grid-template-columns: 1fr; gap: 10px; margin-top: 18px; }
+            .wechat-guide__step { display: grid; grid-template-columns: 25px 1fr; column-gap: 10px; }
+            .wechat-guide__step-number { grid-row: span 2; }
+            .wechat-guide__mock { grid-column: 1 / -1; grid-row: 1; margin-bottom: 9px; }
+            .wechat-guide__step h3, .wechat-guide__step p { grid-column: 2; }
+        }
     </style>
 </head>
 <body>
+    <div id="wechat-guide" class="wechat-guide" role="dialog" aria-modal="true" aria-labelledby="wechat-guide-title" aria-hidden="true">
+        <div class="wechat-guide__sheet">
+            <div class="wechat-guide__eyebrow"><span class="wechat-guide__eyebrow-dot"></span>微信打开提示</div>
+            <h2 id="wechat-guide-title">建议使用手机浏览器预约</h2>
+            <p class="wechat-guide__lead">微信内置页面偶尔会限制部分网页功能。按下面两步打开，预约页面会更稳定，也更接近正常浏览器体验。</p>
+            <div class="wechat-guide__steps">
+                <div class="wechat-guide__step">
+                    <div class="wechat-guide__mock" aria-hidden="true">
+                        <div class="wechat-guide__mock-bar"><span>实验室预约</span><span class="wechat-guide__dots"><i></i><i></i><i></i></span></div>
+                        <div class="wechat-guide__mock-body"><div class="wechat-guide__mock-line"></div><div class="wechat-guide__mock-line" style="width:48%"></div></div>
+                    </div>
+                    <div class="wechat-guide__step-number">1</div>
+                    <h3>点击右上角“···”</h3>
+                    <p>打开微信页面右上角的菜单。</p>
+                </div>
+                <div class="wechat-guide__step">
+                    <div class="wechat-guide__mock" aria-hidden="true">
+                        <div class="wechat-guide__mock-bar"><span>页面菜单</span><span>×</span></div>
+                        <div class="wechat-guide__mock-body"><div class="wechat-guide__mock-menu">在浏览器中打开</div></div>
+                    </div>
+                    <div class="wechat-guide__step-number">2</div>
+                    <h3>选择“在浏览器中打开”</h3>
+                    <p>系统会调用手机默认浏览器继续访问。</p>
+                </div>
+            </div>
+            <div class="wechat-guide__actions">
+                <button class="btn btn-primary" id="wechat-copy-link" type="button">复制预约网址</button>
+                <button class="btn" id="wechat-continue" type="button" style="background:#e8f3f8;color:#155e75">继续在微信内使用</button>
+            </div>
+            <div id="wechat-copy-status" class="wechat-guide__copy-status" aria-live="polite"></div>
+            <p class="wechat-guide__fine-print">如果你是用手机系统相机扫码，通常会直接进入默认浏览器，无需这一步。</p>
+        </div>
+    </div>
     <div class="header">
         <h1>实验室预约登记系统</h1>
         <p id="header-subtitle" style="margin-top:4px;">请填写以下信息完成实验室预约</p>
@@ -165,9 +498,9 @@
 
     <div class="container">
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('booking')">📋 预约实验室</button>
-            <button class="tab" onclick="switchTab('schedule')">📅 查看安排</button>
-            <button class="tab" onclick="switchTab('mybookings')">🔍 我的预约</button>
+            <button class="tab active" onclick="switchTab('booking')"><span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"></path></svg></span>预约实验室</button>
+            <button class="tab" onclick="switchTab('schedule')"><span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M8 3v4M16 3v4M4 10h16M8 14h3M13 14h3M8 17h3"></path></svg></span>查看安排</button>
+            <button class="tab" onclick="switchTab('mybookings')"><span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="5.5"></circle><path d="m15 15 4 4M8.5 10.5h4M10.5 8.5v4"></path></svg></span>我的预约</button>
         </div>
 
         <!-- Booking Tab -->
@@ -176,7 +509,7 @@
                 <div id="alert-container"></div>
                 <div class="card">
                     <div class="form-section">
-                        <h3>👤 个人信息</h3>
+                        <h3><span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c.7-3.5 3.1-5.5 7-5.5s6.3 2 7 5.5"></path></svg></span>个人信息</h3>
                         <div class="form-row">
                             <div class="form-group" id="fg-student_name">
                                 <label>姓名<span class="required-tag">*必填</span></label>
@@ -205,7 +538,7 @@
                         </div>
                     </div>
                     <div class="form-section">
-                        <h3>🏫 借用信息</h3>
+                        <h3><span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h16M6 20V7h12v13M9 7V4h6v3M9 11h2M13 11h2M9 15h2M13 15h2"></path></svg></span>借用信息</h3>
                         <div class="form-group" id="fg-booking_date">
                             <label>借用日期<span class="required-tag">*必填</span></label>
                             <input type="date" id="booking_date" onchange="onDateChange()">
@@ -233,12 +566,12 @@
             <div id="success-screen" style="display:none">
                 <div class="card">
                     <div class="success-page">
-                        <div class="icon">✅</div>
+                        <div class="icon success-mark" aria-hidden="true">✓</div>
                         <h2>预约提交成功！</h2>
                         <div class="message" id="success-message"></div>
                         <div class="notice-box" id="notice-box">
-                            <p><span class="notice-icon">⚠️</span> 请及时到办公室核实能否正式预约</p>
-                            <p><span class="notice-icon">📋</span> 办理正式手续后方可使用教室</p>
+                            <p><span class="notice-icon" aria-hidden="true">!</span> 请及时到办公室核实能否正式预约</p>
+                            <p><span class="notice-icon" aria-hidden="true">i</span> 办理正式手续后方可使用教室</p>
                         </div>
                         <div class="countdown" id="countdown-box">
                             请仔细阅读以上须知 <span id="countdown-timer">3</span> 秒后可继续操作
@@ -255,7 +588,7 @@
         <!-- Schedule Tab (privacy-aware) -->
         <div id="tab-schedule" class="tab-content">
             <div class="card">
-                <h2>📅 教室使用安排查询</h2>
+                <h2><span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M8 3v4M16 3v4M4 10h16"></path></svg></span>教室使用安排查询</h2>
                 <p style="color:var(--text-secondary);margin-bottom:16px">查询指定日期各教室的占用情况（保护隐私，不显示预约人信息）</p>
                 <div style="display:flex;gap:10px;margin-bottom:16px">
                     <input type="date" id="schedule-date" style="flex:1;padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:0.95rem">
@@ -270,7 +603,7 @@
         <!-- My Bookings Tab -->
         <div id="tab-mybookings" class="tab-content">
             <div class="card">
-                <h2 style="margin-bottom:16px">🔍 查询我的预约</h2>
+                <h2 style="margin-bottom:16px"><span class="ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="5.5"></circle><path d="m15 15 4 4M8.5 10.5h4M10.5 8.5v4"></path></svg></span>查询我的预约</h2>
                 <div style="display:flex;gap:10px;margin-bottom:16px">
                     <input type="text" id="search_student_id" placeholder="请输入学号查询" style="flex:1;padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:0.95rem" onkeydown="if(event.key==='Enter')loadMyBookings()">
                     <button class="btn btn-primary" style="width:auto" onclick="loadMyBookings()">查询</button>
@@ -281,6 +614,47 @@
     </div>
 
     <script>
+        function isMobileWechat() {
+            const ua = navigator.userAgent || '';
+            return /MicroMessenger/i.test(ua) && /Mobile|Android|iPhone|iPad/i.test(ua);
+        }
+
+        function closeWechatGuide() {
+            const guide = document.getElementById('wechat-guide');
+            guide.classList.remove('is-visible');
+            guide.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('wechat-guide-open');
+        }
+
+        async function copyBookingLink() {
+            const status = document.getElementById('wechat-copy-status');
+            try {
+                await navigator.clipboard.writeText(window.location.href);
+                status.textContent = '网址已复制，请打开手机浏览器粘贴访问';
+            } catch (e) {
+                const input = document.createElement('input');
+                input.value = window.location.href;
+                input.setAttribute('readonly', '');
+                input.style.position = 'fixed'; input.style.opacity = '0';
+                document.body.appendChild(input); input.select();
+                try { document.execCommand('copy'); status.textContent = '网址已复制，请打开手机浏览器粘贴访问'; }
+                catch (_) { status.textContent = window.location.href; }
+                input.remove();
+            }
+        }
+
+        function initWechatGuide() {
+            if (!isMobileWechat()) return;
+            const guide = document.getElementById('wechat-guide');
+            guide.classList.add('is-visible');
+            guide.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('wechat-guide-open');
+            document.getElementById('wechat-copy-link').addEventListener('click', copyBookingLink);
+            document.getElementById('wechat-continue').addEventListener('click', closeWechatGuide);
+        }
+
+        initWechatGuide();
+
         let formConfig = null;
         let selectedClassroom = null;
         let selectedTimeSlots = [];
@@ -307,15 +681,17 @@
             el.style.fontSize = s.fontSize || '16px';
             el.style.fontWeight = s.fontWeight || '400';
             el.style.fontStyle = s.fontStyle || 'normal';
-            el.style.color = s.color || '#ffffff';
+            const color = String(s.color || '').trim().toLowerCase();
+            const isLightColor = ['#fff', '#ffffff', 'white', 'rgb(255, 255, 255)'].includes(color);
+            el.style.color = isLightColor ? 'var(--text-secondary)' : (s.color || 'var(--text-secondary)');
             el.style.opacity = '0.85';
         }
 
         function renderNoticeBox() {
             if (!formConfig?.notice_lines?.length) return;
-            const icons = ['⚠️', '📋'];
+            const icons = ['!', 'i'];
             document.getElementById('notice-box').innerHTML = formConfig.notice_lines.map((line, i) =>
-                `<p><span class="notice-icon">${icons[i] || '📌'}</span> ${escapeHtml(line)}</p>`
+                `<p><span class="notice-icon" aria-hidden="true">${icons[i] || 'i'}</span> ${escapeHtml(line)}</p>`
             ).join('');
         }
 
@@ -326,7 +702,7 @@
                 formConfig.majors.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
             // 教室
             document.getElementById('classroom-grid').innerHTML = formConfig.classrooms.map(c =>
-                `<div class="classroom-card" onclick="selectClassroom('${escapeHtml(c)}')" data-room="${escapeHtml(c)}">${escapeHtml(c)}</div>`
+                `<div class="classroom-card" onclick="selectClassroom('${escapeHtml(c)}')" data-room="${escapeHtml(c)}"><span class="room-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h16M6 20V6l6-3 6 3v14M9 20v-5h6v5M9 9h.01M15 9h.01M9 12h.01M15 12h.01"></path></svg></span><span>${escapeHtml(c)}</span></div>`
             ).join('');
             // 字段标签 + 校验规则
             for (const [key, cfg] of Object.entries(formConfig.form_fields)) {
@@ -359,7 +735,7 @@
             const customContainer = document.getElementById('custom-fields-container');
             const customs = formConfig.custom_fields || [];
             if (customs.length) {
-                customContainer.innerHTML = '<div class="form-section"><h3>📎 附加信息</h3>' +
+                customContainer.innerHTML = '<div class="form-section"><h3>附加信息</h3>' +
                     customs.map(cf => renderCustomField(cf)).join('') +
                     '</div>';
             } else {
@@ -624,7 +1000,7 @@
 
         async function cancelBooking(id, sid) {
             if (!confirm('确认取消？')) return;
-            await fetch(`/api/bookings/${id}/cancel?student_id=${sid}`);
+            await fetch(`/api/bookings/${id}/cancel?student_id=${encodeURIComponent(sid)}`, { method: 'POST' });
             loadMyBookings();
             if (document.getElementById('booking_date').value && selectedClassroom) loadAvailability();
         }

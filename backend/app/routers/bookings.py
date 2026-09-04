@@ -1,12 +1,16 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional, List
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import json
+import asyncio
+from uuid import uuid4
 
 from ..schemas import BookingCreate, BookingUpdate, BookingResponse, AvailabilityResponse, AdminAuth
 from ..config import settings
 from ..settings_manager import get_settings_manager
 from ..storage import get_storage, StorageBackend
+from ..task_manager import task_manager
+from ..admin_auth import require_admin
 from pydantic import BaseModel
 from typing import List as ListType
 
@@ -179,14 +183,14 @@ async def list_bookings(
     student_id: Optional[str] = Query(None, description="学号"),
     status: Optional[str] = Query(None, description="状态: pending/approved/rejected/cancelled"),
 ):
+    if not student_id:
+        raise HTTPException(status_code=400, detail="请提供学号查询自己的预约")
     storage = get_storage_instance()
     return await storage.list_bookings(date_str=date, classroom=classroom, student_id=student_id, status=status)
 
 
 @router.get("/bookings/all", response_model=List[BookingResponse])
-async def get_all_bookings(password: str = Query(...)):
-    if not get_settings_manager().check_admin_password(password):
-        raise HTTPException(status_code=403, detail="密码错误")
+async def get_all_bookings(password: str = Depends(require_admin)):
     storage = get_storage_instance()
     return await storage.get_all_bookings()
 
@@ -197,9 +201,7 @@ class BatchStatusUpdate(BaseModel):
 
 
 @router.put("/bookings/batch-status")
-async def batch_update_status(data: BatchStatusUpdate, password: str = Query(...)):
-    if not get_settings_manager().check_admin_password(password):
-        raise HTTPException(status_code=403, detail="密码错误")
+async def batch_update_status(data: BatchStatusUpdate, password: str = Depends(require_admin)):
     if data.status not in ("approved", "rejected", "pending", "cancelled"):
         raise HTTPException(status_code=400, detail="无效的状态值")
     if not data.ids:
@@ -219,9 +221,7 @@ class BatchDeleteRequest(BaseModel):
 
 
 @router.post("/bookings/batch-delete")
-async def batch_delete_bookings(data: BatchDeleteRequest, password: str = Query(...)):
-    if not get_settings_manager().check_admin_password(password):
-        raise HTTPException(status_code=403, detail="密码错误")
+async def batch_delete_bookings(data: BatchDeleteRequest, password: str = Depends(require_admin)):
     if not data.ids:
         raise HTTPException(status_code=400, detail="请选择至少一条记录")
 
@@ -243,9 +243,7 @@ async def get_booking(booking_id: int):
 
 
 @router.put("/bookings/{booking_id}", response_model=BookingResponse)
-async def update_booking(booking_id: int, booking: BookingUpdate, password: str = Query(...)):
-    if not get_settings_manager().check_admin_password(password):
-        raise HTTPException(status_code=403, detail="密码错误")
+async def update_booking(booking_id: int, booking: BookingUpdate, password: str = Depends(require_admin)):
     storage = get_storage_instance()
     existing = await storage.get_booking(booking_id)
     if not existing:
@@ -265,16 +263,103 @@ class CourseImportRequest(BaseModel):
     course_name: str = ""
 
 
-@router.post("/admin/courses")
-async def import_courses(data: CourseImportRequest, password: str = Query(...)):
-    if not get_settings_manager().check_admin_password(password):
-        raise HTTPException(status_code=403, detail="密码错误")
+class CourseBookingUpdate(BaseModel):
+    classroom: str
+    booking_date: str
+    start_time: str
+    end_time: str
+
+
+def _run_course_import(data: CourseImportRequest, batch_id: str, total: int, progress) -> dict:
+    """Build an import in memory, then commit it in one storage operation."""
+    storage = get_storage_instance()
+    existing = asyncio.run(storage.get_all_bookings())
+    occupied = {}
+    for booking in existing:
+        if booking.get("status") not in ("pending", "approved", "course"):
+            continue
+        key = (booking.get("classroom"), booking.get("booking_date"))
+        occupied.setdefault(key, []).append((booking.get("start_time"), booking.get("end_time")))
+
+    records = []
+    skipped = 0
+    processed = 0
+    current = datetime.strptime(data.start_date, "%Y-%m-%d").date()
+    end = datetime.strptime(data.end_date, "%Y-%m-%d").date()
+    import datetime as dt
+
+    while current <= end:
+        if current.weekday() in data.weekdays:
+            for slot in data.time_slots:
+                key = (data.classroom, current.isoformat())
+                conflict = any(
+                    _time_overlap(slot.start_time, slot.end_time, start_time, end_time)
+                    for start_time, end_time in occupied.get(key, [])
+                )
+                if conflict:
+                    skipped += 1
+                else:
+                    records.append({
+                        "student_name": f"[课程] {data.course_name}" if data.course_name else "[课程]",
+                        "student_id": "COURSE",
+                        "major": "",
+                        "supervisor": "",
+                        "classroom": data.classroom,
+                        "booking_date": current.isoformat(),
+                        "start_time": slot.start_time,
+                        "end_time": slot.end_time,
+                        "purpose": data.course_name or "课程安排",
+                        "phone": "",
+                        "status": "course",
+                        "custom_data": {"_course_batch": batch_id},
+                    })
+                    occupied.setdefault(key, []).append((slot.start_time, slot.end_time))
+                processed += 1
+                progress(processed, total, f"正在处理第 {processed}/{total} 个时段")
+        current += dt.timedelta(days=1)
+
+    created = storage.bulk_create_bookings(records)
+    return {
+        "created": created,
+        "skipped": skipped,
+        "batch_id": batch_id,
+        "message": f"导入完成：新增 {created} 条，跳过 {skipped} 条冲突",
+    }
+
+
+@router.get("/admin/tasks")
+async def list_background_tasks(password: str = Depends(require_admin)):
+    return {"tasks": task_manager.list()}
+
+
+@router.get("/admin/tasks/{task_id}")
+async def get_background_task(task_id: str, password: str = Depends(require_admin)):
+    task = task_manager.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="后台任务不存在或已被清理")
+    return task
+
+
+@router.post("/admin/tasks/{task_id}/cancel")
+async def cancel_background_task(task_id: str, password: str = Depends(require_admin)):
+    task = task_manager.cancel(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="后台任务不存在或已被清理")
+    if task["status"] != "cancelled":
+        raise HTTPException(status_code=409, detail="任务已经开始执行，无法取消")
+    return task
+
+
+@router.post("/admin/courses", status_code=202)
+async def import_courses(data: CourseImportRequest, password: str = Depends(require_admin)):
 
     valid_rooms = get_classrooms()
     if data.classroom not in valid_rooms:
         raise HTTPException(status_code=400, detail=f"无效的教室: {data.classroom}")
     if not data.weekdays or not data.time_slots:
         raise HTTPException(status_code=400, detail="请选择星期和时段")
+    if any(day < 0 or day > 6 for day in data.weekdays):
+        raise HTTPException(status_code=400, detail="星期参数无效")
 
     try:
         start = datetime.strptime(data.start_date, "%Y-%m-%d").date()
@@ -285,55 +370,79 @@ async def import_courses(data: CourseImportRequest, password: str = Query(...)):
     if start > end:
         raise HTTPException(status_code=400, detail="开始日期不能晚于结束日期")
 
-    storage = get_storage_instance()
-    batch_id = f"course_{int(datetime.utcnow().timestamp())}"
-    created = 0
-    skipped = 0
-    current = start
+    for slot in data.time_slots:
+        try:
+            datetime.strptime(slot.start_time, "%H:%M")
+            datetime.strptime(slot.end_time, "%H:%M")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="时段格式错误，应为 HH:MM")
+        if _parse_time(slot.start_time) >= _parse_time(slot.end_time):
+            raise HTTPException(status_code=400, detail="开始时间必须早于结束时间")
 
-    import datetime as dt
-    while current <= end:
-        if current.weekday() in data.weekdays:
-            for slot in data.time_slots:
-                conflict = await _check_conflict(storage, data.classroom,
-                    current.isoformat(), slot.start_time, slot.end_time)
-                if conflict:
-                    skipped += 1
-                    continue
-                await storage.create_booking({
-                    "student_name": f"[课程] {data.course_name}" if data.course_name else "[课程]",
-                    "student_id": "COURSE",
-                    "major": "",
-                    "supervisor": "",
-                    "classroom": data.classroom,
-                    "booking_date": current.isoformat(),
-                    "start_time": slot.start_time,
-                    "end_time": slot.end_time,
-                    "purpose": data.course_name or "课程安排",
-                    "phone": "",
-                    "status": "course",
-                    "custom_data": {"_course_batch": batch_id},
-                })
-                created += 1
-        current += dt.timedelta(days=1)
+    total = sum(
+        1 for day_offset in range((end - start).days + 1)
+        if (start + timedelta(days=day_offset)).weekday() in data.weekdays
+    ) * len(data.time_slots)
+    batch_id = f"course_{int(datetime.utcnow().timestamp())}_{uuid4().hex[:8]}"
+    task = task_manager.submit(
+        task_type="course_import",
+        title="排课导入",
+        total=total,
+        metadata={
+            "classroom": data.classroom,
+            "course_name": data.course_name or "课程安排",
+            "start_date": data.start_date,
+            "end_date": data.end_date,
+        },
+        worker=lambda progress: _run_course_import(data, batch_id, total, progress),
+    )
+    return {
+        "success": True,
+        "message": "排课导入任务已建立，正在后台处理",
+        "task_id": task["id"],
+        "task": task,
+    }
 
-    return {"success": True, "created": created, "skipped": skipped, "batch_id": batch_id}
+
+def _custom_data(booking: dict) -> dict:
+    value = booking.get("custom_data", {})
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except Exception:
+            return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _match_semester(booking_date: str, semesters: list) -> Optional[dict]:
+    try:
+        current = datetime.strptime(booking_date, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        return None
+    matches = []
+    for semester in semesters:
+        try:
+            start = datetime.strptime(semester["start_date"], "%Y-%m-%d").date()
+            end = datetime.strptime(semester["end_date"], "%Y-%m-%d").date()
+        except (KeyError, TypeError, ValueError):
+            continue
+        if start <= current <= end:
+            matches.append((start, semester))
+    return max(matches, key=lambda item: item[0])[1] if matches else None
 
 
 @router.get("/admin/courses/batches")
-async def list_course_batches(password: str = Query(...)):
-    if not get_settings_manager().check_admin_password(password):
-        raise HTTPException(status_code=403, detail="密码错误")
+async def list_course_batches(semester_id: Optional[str] = Query(None), password: str = Depends(require_admin)):
 
     storage = get_storage_instance()
     all_bookings = await storage.get_all_bookings()
     course_bookings = [b for b in all_bookings if b.get("status") == "course"]
+    mgr = get_settings_manager()
+    semesters = mgr.semesters
+    semester_version = mgr.semester_version
     batches = {}
     for b in course_bookings:
-        cd = b.get("custom_data", {})
-        if isinstance(cd, str):
-            try: cd = json.loads(cd)
-            except: cd = {}
+        cd = _custom_data(b)
         bid = cd.get("_course_batch", "unknown")
         if bid not in batches:
             batches[bid] = {
@@ -342,24 +451,100 @@ async def list_course_batches(password: str = Query(...)):
                 "course_name": (b.get("purpose") or "").replace("课程安排", "").strip(),
                 "count": 0,
                 "dates": set(),
+                "records": [],
+                "semester_id": None,
+                "semester_code": None,
             }
         batches[bid]["count"] += 1
         batches[bid]["dates"].add(b.get("booking_date", ""))
+        batches[bid]["records"].append((b, cd))
 
     result = []
     for v in batches.values():
+        marker = next(
+            ((b, cd) for b, cd in v["records"] if cd.get("_semester_version") == semester_version and cd.get("_semester_id")),
+            None,
+        )
+        if marker:
+            v["semester_id"] = marker[1].get("_semester_id")
+            v["semester_code"] = marker[1].get("_semester_code", "其他")
+        else:
+            sample, sample_cd = v["records"][0]
+            matched = _match_semester(sample.get("booking_date"), semesters)
+            v["semester_id"] = matched.get("id") if matched else "other"
+            v["semester_code"] = matched.get("code") if matched else "其他"
+            sample_cd.update({
+                "_semester_id": v["semester_id"],
+                "_semester_code": v["semester_code"],
+                "_semester_version": semester_version,
+            })
+            await storage.update_booking(sample["id"], {"custom_data": sample_cd})
         dates = sorted(v["dates"])
         v["date_range"] = f"{dates[0]} ~ {dates[-1]}" if len(dates) > 1 else (dates[0] if dates else "")
         v.pop("dates")
+        v.pop("records")
         result.append(v)
 
-    return {"batches": sorted(result, key=lambda x: x["batch_id"], reverse=True)}
+    today = date.today()
+    active_semester = next(
+        (s for s in sorted(semesters, key=lambda item: item.get("start_date", ""), reverse=True)
+         if s.get("start_date", "") <= today.isoformat() <= s.get("end_date", "")),
+        None,
+    )
+    if semester_id in (None, "current"):
+        selected_semester_id = active_semester.get("id") if active_semester else None
+    else:
+        selected_semester_id = semester_id
+
+    if selected_semester_id is None:
+        result = []
+    elif selected_semester_id != "all":
+        result = [item for item in result if item["semester_id"] == selected_semester_id]
+
+    return {
+        "batches": sorted(result, key=lambda x: x["batch_id"], reverse=True),
+        "semesters": sorted(semesters, key=lambda item: item.get("start_date", ""), reverse=True),
+        "active_semester_id": active_semester.get("id") if active_semester else None,
+        "selected_semester_id": selected_semester_id,
+    }
+
+
+@router.get("/admin/courses/batches/{batch_id}")
+async def get_course_batch(batch_id: str, password: str = Depends(require_admin)):
+    storage = get_storage_instance()
+    bookings = []
+    for booking in await storage.get_all_bookings():
+        if booking.get("status") == "course" and _custom_data(booking).get("_course_batch") == batch_id:
+            bookings.append(booking)
+    bookings.sort(key=lambda item: (item.get("booking_date", ""), item.get("start_time", "")))
+    return {"batch_id": batch_id, "bookings": bookings}
+
+
+@router.put("/admin/courses/{booking_id}")
+async def update_course_booking(booking_id: int, data: CourseBookingUpdate, password: str = Depends(require_admin)):
+    if data.classroom not in get_classrooms():
+        raise HTTPException(status_code=400, detail=f"无效的教室: {data.classroom}")
+    try:
+        datetime.strptime(data.booking_date, "%Y-%m-%d")
+        datetime.strptime(data.start_time, "%H:%M")
+        datetime.strptime(data.end_time, "%H:%M")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="日期或时间格式错误")
+    if _parse_time(data.start_time) >= _parse_time(data.end_time):
+        raise HTTPException(status_code=400, detail="开始时间必须早于结束时间")
+
+    storage = get_storage_instance()
+    existing = await storage.get_booking(booking_id)
+    if not existing or existing.get("status") != "course":
+        raise HTTPException(status_code=404, detail="课程记录不存在")
+    conflict = await _check_conflict(storage, data.classroom, data.booking_date, data.start_time, data.end_time, booking_id)
+    if conflict:
+        raise HTTPException(status_code=409, detail="目标时间段已经被占用，无法调整")
+    return await storage.update_booking(booking_id, data.model_dump())
 
 
 @router.delete("/admin/courses/batches/{batch_id}")
-async def delete_course_batch(batch_id: str, password: str = Query(...)):
-    if not get_settings_manager().check_admin_password(password):
-        raise HTTPException(status_code=403, detail="密码错误")
+async def delete_course_batch(batch_id: str, password: str = Depends(require_admin)):
     if batch_id == "unknown":
         raise HTTPException(status_code=400, detail="不能删除旧版课程记录，请在预约管理中逐条删除")
 
@@ -367,10 +552,7 @@ async def delete_course_batch(batch_id: str, password: str = Query(...)):
     all_bookings = await storage.get_all_bookings()
     deleted = 0
     for b in all_bookings:
-        cd = b.get("custom_data", {})
-        if isinstance(cd, str):
-            try: cd = json.loads(cd)
-            except: cd = {}
+        cd = _custom_data(b)
         if cd.get("_course_batch") == batch_id and b.get("status") == "course":
             if await storage.delete_booking(b["id"]):
                 deleted += 1
@@ -378,9 +560,7 @@ async def delete_course_batch(batch_id: str, password: str = Query(...)):
 
 
 @router.delete("/bookings/{booking_id}")
-async def delete_booking(booking_id: int, password: str = Query(...)):
-    if not get_settings_manager().check_admin_password(password):
-        raise HTTPException(status_code=403, detail="密码错误")
+async def delete_booking(booking_id: int, password: str = Depends(require_admin)):
     storage = get_storage_instance()
     success = await storage.delete_booking(booking_id)
     if not success:
@@ -388,7 +568,7 @@ async def delete_booking(booking_id: int, password: str = Query(...)):
     return {"message": "删除成功"}
 
 
-@router.get("/bookings/{booking_id}/cancel")
+@router.post("/bookings/{booking_id}/cancel")
 async def cancel_booking(booking_id: int, student_id: str = Query(...)):
     storage = get_storage_instance()
     existing = await storage.get_booking(booking_id)
@@ -416,19 +596,16 @@ async def check_availability(classroom: str = Query(...), date: str = Query(...)
     slots = []
     for ts in get_time_slots():
         is_available = True
-        booked_by = None
         occupying_status = None
         for b in booked:
             if _time_overlap(ts["start"], ts["end"], b["start_time"], b["end_time"]):
                 is_available = False
-                booked_by = f"{b['student_name']}({b['student_id']})"
                 occupying_status = b.get("status", "")
                 break
         slots.append({
             "start": ts["start"],
             "end": ts["end"],
             "available": is_available,
-            "booked_by": booked_by,
             "occupying_status": occupying_status,
         })
 

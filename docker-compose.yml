@@ -1,52 +1,32 @@
-version: "3.8"
-
 services:
+  # One application container with two role-separated listeners:
+  # NAS 8000 -> public reservation app, NAS 8001 -> local admin app.
   lab-booking:
+    image: lab-booking:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "${PUBLIC_PORT:-8000}:8000"
+      - "${ADMIN_BIND_IP:-127.0.0.1}:${ADMIN_PORT:-8001}:8001"
     environment:
       - STORAGE_BACKEND=sqlite
+      - SQLITE_URL=sqlite:///./data/bookings.db
       - JSON_DATA_DIR=/app/data
-      - ADMIN_PASSWORD=admin123
+      - APP_ROLE=split
+      - PORT=8000
+      - ADMIN_PORT=8001
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env before starting}
       - CLASSROOMS=101实验室,102实验室,201机房,202机房,301多媒体教室,302多媒体教室,401研讨室,402研讨室
       - TIME_SLOTS=08:00-09:35,09:50-11:25,11:40-13:15,13:30-15:05,15:20-16:55,17:10-18:45
+      - LAB_BOOKING_DEFAULT_CLASSROOMS=${LAB_BOOKING_DEFAULT_CLASSROOMS:-101实验室,102实验室,201机房,202机房,301多媒体教室,302多媒体教室,401研讨室,402研讨室}
+      - LAB_BOOKING_DEFAULT_MAJORS=${LAB_BOOKING_DEFAULT_MAJORS:-计算机科学与技术,软件工程,电子信息工程,通信工程,机械工程,自动化,电气工程,材料科学与工程,化学工程,生物工程,数学与应用数学,物理学,应用化学,工商管理,会计学,金融学}
+      - LAB_BOOKING_DEFAULT_TIME_SLOTS_JSON=${LAB_BOOKING_DEFAULT_TIME_SLOTS_JSON:-[{"slot":"08:00-09:35","remark":"第一课时"},{"slot":"09:50-11:25","remark":"第二课时"},{"slot":"11:40-13:15","remark":"第三课时"},{"slot":"13:30-15:05","remark":"第四课时"},{"slot":"15:20-16:55","remark":"第五课时"},{"slot":"17:10-18:45","remark":"第六课时"}]}
     volumes:
-      - booking_data:/app/data
+      - ./data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 5s
       retries: 3
-
-  # === 可选：使用 PostgreSQL 替代 SQLite ===
-  # 取消下方注释，并将 lab-booking 的 STORAGE_BACKEND 改为 postgres
-  #
-  # postgres:
-  #   image: postgres:16-alpine
-  #   environment:
-  #     POSTGRES_USER: lab
-  #     POSTGRES_PASSWORD: lab123
-  #     POSTGRES_DB: lab_booking
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   restart: unless-stopped
-  #
-  # lab-booking:
-  #   ...
-  #   environment:
-  #     - STORAGE_BACKEND=postgres
-  #     - POSTGRES_HOST=postgres
-  #     - POSTGRES_PORT=5432
-  #     - POSTGRES_USER=lab
-  #     - POSTGRES_PASSWORD=lab123
-  #     - POSTGRES_DATABASE=lab_booking
-  #   depends_on:
-  #     - postgres
-
-volumes:
-  booking_data:
-  # postgres_data:

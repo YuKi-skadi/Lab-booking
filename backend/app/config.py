@@ -6,18 +6,22 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     storage_backend: str = "sqlite"
 
+    # all: single-process local development; public/admin: split Docker deployment
+    app_role: str = "all"
+    cors_origins: str = ""
+
     sqlite_url: str = "sqlite:///./data/bookings.db"
 
     mysql_host: str = "localhost"
     mysql_port: int = 3306
     mysql_user: str = "lab"
-    mysql_password: str = "lab123"
+    mysql_password: str = ""
     mysql_database: str = "lab_booking"
 
     postgres_host: str = "localhost"
     postgres_port: int = 5432
     postgres_user: str = "lab"
-    postgres_password: str = "lab123"
+    postgres_password: str = ""
     postgres_database: str = "lab_booking"
 
     json_data_dir: str = "./data"
@@ -27,12 +31,17 @@ class Settings(BaseSettings):
     time_slots: str = "08:00-09:35,09:50-11:25,11:40-13:15,13:30-15:05,15:20-16:55,17:10-18:45"
 
     port: int = 8000
+    admin_port: int = 8001
 
-    admin_password: str = "admin123"
+    admin_password: str = ""
 
     @property
     def classroom_list(self) -> List[str]:
         return [c.strip() for c in self.classrooms.split(",") if c.strip()]
+
+    @property
+    def cors_origins_list(self) -> List[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     @property
     def time_slot_list(self) -> List[str]:

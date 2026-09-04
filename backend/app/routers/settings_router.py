@@ -1,20 +1,17 @@
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import PlainTextResponse
 from typing import Optional, List
 from pydantic import BaseModel, Field
 import json
 import io
+from datetime import datetime
+from uuid import uuid4
 
 from ..settings_manager import get_settings_manager
 from ..storage import get_storage
+from ..admin_auth import require_admin
 
 router = APIRouter(prefix="/api/admin", tags=["admin_settings"])
-
-
-def check_admin(password: str):
-    mgr = get_settings_manager()
-    if not mgr.check_admin_password(password):
-        raise HTTPException(status_code=403, detail="密码错误")
 
 
 # ==================== 系统设置 ====================
@@ -40,9 +37,68 @@ class SettingsUpdate(BaseModel):
     notice_lines: Optional[List[str]] = None
 
 
+class SemesterCreate(BaseModel):
+    start_year: int = Field(..., ge=2000, le=2200)
+    end_year: int = Field(..., ge=2000, le=2200)
+    term: int = Field(..., ge=1, le=2)
+    start_date: str
+    end_date: str
+
+
+def _validate_semester(data: SemesterCreate):
+    if data.end_year <= data.start_year:
+        raise HTTPException(status_code=400, detail="结束年份必须晚于开始年份")
+    try:
+        start = datetime.strptime(data.start_date, "%Y-%m-%d").date()
+        end = datetime.strptime(data.end_date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="学期日期格式错误，应为 YYYY-MM-DD")
+    if start > end:
+        raise HTTPException(status_code=400, detail="学期开始日期不能晚于结束日期")
+    return start, end
+
+
+@router.get("/semesters")
+async def list_semesters(password: str = Depends(require_admin)):
+    mgr = get_settings_manager()
+    return {"semesters": sorted(mgr.semesters, key=lambda item: item.get("start_date", ""), reverse=True)}
+
+
+@router.post("/semesters")
+async def create_semester(data: SemesterCreate, password: str = Depends(require_admin)):
+    _validate_semester(data)
+    mgr = get_settings_manager()
+    code = f"{data.start_year}-{data.end_year}-{data.term}"
+    if any(item.get("code") == code for item in mgr.semesters):
+        raise HTTPException(status_code=400, detail="该学期已经存在")
+    semester = {
+        "id": f"semester_{uuid4().hex[:10]}",
+        "code": code,
+        "start_year": data.start_year,
+        "end_year": data.end_year,
+        "term": data.term,
+        "start_date": data.start_date,
+        "end_date": data.end_date,
+    }
+    semesters = list(mgr.semesters)
+    semesters.append(semester)
+    mgr.update({"semesters": semesters, "semester_version": mgr.semester_version + 1})
+    return {"success": True, "semester": semester, "semesters": semesters}
+
+
+@router.delete("/semesters/{semester_id}")
+async def delete_semester(semester_id: str, password: str = Depends(require_admin)):
+    mgr = get_settings_manager()
+    semesters = list(mgr.semesters)
+    remaining = [item for item in semesters if item.get("id") != semester_id]
+    if len(remaining) == len(semesters):
+        raise HTTPException(status_code=404, detail="学期不存在")
+    mgr.update({"semesters": remaining, "semester_version": mgr.semester_version + 1})
+    return {"success": True, "semesters": remaining}
+
+
 @router.get("/settings")
-async def get_settings(password: str = Query(...)):
-    check_admin(password)
+async def get_settings(password: str = Depends(require_admin)):
     mgr = get_settings_manager()
     return {
         "admin_password": mgr.admin_password,
@@ -54,8 +110,7 @@ async def get_settings(password: str = Query(...)):
 
 
 @router.put("/settings")
-async def update_settings(data: SettingsUpdate, password: str = Query(...)):
-    check_admin(password)
+async def update_settings(data: SettingsUpdate, password: str = Depends(require_admin)):
     mgr = get_settings_manager()
     updates = {}
     if data.admin_password is not None:
@@ -80,15 +135,13 @@ class ClassroomItem(BaseModel):
 
 
 @router.get("/classrooms")
-async def get_classrooms(password: str = Query(...)):
-    check_admin(password)
+async def get_classrooms(password: str = Depends(require_admin)):
     mgr = get_settings_manager()
     return {"classrooms": mgr.classrooms}
 
 
 @router.post("/classrooms")
-async def add_classroom(item: ClassroomItem, password: str = Query(...)):
-    check_admin(password)
+async def add_classroom(item: ClassroomItem, password: str = Depends(require_admin)):
     mgr = get_settings_manager()
     name = item.name.strip()
     if not name:
@@ -102,8 +155,7 @@ async def add_classroom(item: ClassroomItem, password: str = Query(...)):
 
 
 @router.put("/classrooms/{index}")
-async def rename_classroom(index: int, item: ClassroomItem, password: str = Query(...)):
-    check_admin(password)
+async def rename_classroom(index: int, item: ClassroomItem, password: str = Depends(require_admin)):
     mgr = get_settings_manager()
     classrooms = list(mgr.classrooms)
     if index < 0 or index >= len(classrooms):
@@ -119,8 +171,7 @@ async def rename_classroom(index: int, item: ClassroomItem, password: str = Quer
 
 
 @router.delete("/classrooms/{index}")
-async def delete_classroom(index: int, password: str = Query(...)):
-    check_admin(password)
+async def delete_classroom(index: int, password: str = Depends(require_admin)):
     mgr = get_settings_manager()
     classrooms = list(mgr.classrooms)
     if index < 0 or index >= len(classrooms):
@@ -137,15 +188,13 @@ class MajorItem(BaseModel):
 
 
 @router.get("/majors")
-async def get_majors(password: str = Query(...)):
-    check_admin(password)
+async def get_majors(password: str = Depends(require_admin)):
     mgr = get_settings_manager()
     return {"majors": mgr.majors}
 
 
 @router.post("/majors")
-async def add_major(item: MajorItem, password: str = Query(...)):
-    check_admin(password)
+async def add_major(item: MajorItem, password: str = Depends(require_admin)):
     mgr = get_settings_manager()
     name = item.name.strip()
     if not name:
@@ -160,8 +209,7 @@ async def add_major(item: MajorItem, password: str = Query(...)):
 
 
 @router.delete("/majors/{index}")
-async def delete_major(index: int, password: str = Query(...)):
-    check_admin(password)
+async def delete_major(index: int, password: str = Depends(require_admin)):
     mgr = get_settings_manager()
     majors = list(mgr.majors)
     if index < 0 or index >= len(majors):
@@ -188,8 +236,7 @@ class FormFieldCreate(BaseModel):
 
 
 @router.get("/form-fields")
-async def get_form_fields(password: str = Query(...)):
-    check_admin(password)
+async def get_form_fields(password: str = Depends(require_admin)):
     mgr = get_settings_manager()
     return {
         "built_in": mgr.form_fields,
@@ -198,8 +245,7 @@ async def get_form_fields(password: str = Query(...)):
 
 
 @router.put("/form-fields/{field_key}")
-async def update_form_field(field_key: str, data: FormFieldUpdate, password: str = Query(...)):
-    check_admin(password)
+async def update_form_field(field_key: str, data: FormFieldUpdate, password: str = Depends(require_admin)):
     mgr = get_settings_manager()
     # Try built-in fields first, then custom fields
     fields = dict(mgr.form_fields)
@@ -230,8 +276,7 @@ async def update_form_field(field_key: str, data: FormFieldUpdate, password: str
 
 
 @router.post("/form-fields/custom")
-async def add_custom_field(data: FormFieldCreate, password: str = Query(...)):
-    check_admin(password)
+async def add_custom_field(data: FormFieldCreate, password: str = Depends(require_admin)):
     mgr = get_settings_manager()
     key = data.key.strip()
     if not key:
@@ -257,8 +302,7 @@ async def add_custom_field(data: FormFieldCreate, password: str = Query(...)):
 
 
 @router.delete("/form-fields/custom/{field_key}")
-async def delete_custom_field(field_key: str, password: str = Query(...)):
-    check_admin(password)
+async def delete_custom_field(field_key: str, password: str = Depends(require_admin)):
     mgr = get_settings_manager()
     if field_key in mgr.form_fields:
         raise HTTPException(status_code=400, detail="不能删除内置字段")
@@ -270,8 +314,7 @@ async def delete_custom_field(field_key: str, password: str = Query(...)):
 # ==================== 数据库管理 ====================
 
 @router.get("/db/backup")
-async def backup_database(password: str = Query(...)):
-    check_admin(password)
+async def backup_database(password: str = Depends(require_admin)):
     storage = get_storage()
     bookings = await storage.get_all_bookings()
 
@@ -290,8 +333,7 @@ async def backup_database(password: str = Query(...)):
 
 
 @router.post("/db/import")
-async def import_database(password: str = Query(...), file: UploadFile = File(...)):
-    check_admin(password)
+async def import_database(password: str = Depends(require_admin), file: UploadFile = File(...)):
     try:
         content = await file.read()
         data = json.loads(content.decode("utf-8"))
@@ -338,8 +380,7 @@ async def import_database(password: str = Query(...), file: UploadFile = File(..
 
 
 @router.get("/db/config")
-async def get_db_config(password: str = Query(...)):
-    check_admin(password)
+async def get_db_config(password: str = Depends(require_admin)):
     from ..config import settings
 
     backend = settings.storage_backend.lower()

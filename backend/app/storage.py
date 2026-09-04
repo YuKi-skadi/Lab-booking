@@ -38,6 +38,10 @@ class StorageBackend(ABC):
     async def get_all_bookings(self) -> List[dict]:
         pass
 
+    @abstractmethod
+    def bulk_create_bookings(self, records: List[dict]) -> int:
+        pass
+
 
 class SQLStorage(StorageBackend):
     def __init__(self):
@@ -96,6 +100,11 @@ class SQLStorage(StorageBackend):
             booking = db.query(self.Booking).filter(self.Booking.id == booking_id).first()
             if not booking:
                 return None
+            data = dict(data)
+            if isinstance(data.get("booking_date"), str):
+                data["booking_date"] = datetime.strptime(data["booking_date"], "%Y-%m-%d").date()
+            if "custom_data" in data and isinstance(data["custom_data"], dict):
+                data["custom_data"] = json.dumps(data["custom_data"], ensure_ascii=False)
             for k, v in data.items():
                 if v is not None and hasattr(booking, k):
                     setattr(booking, k, v)
@@ -134,6 +143,28 @@ class SQLStorage(StorageBackend):
         db = self.SessionLocal()
         try:
             return [b.to_dict() for b in db.query(self.Booking).order_by(self.Booking.booking_date.desc(), self.Booking.start_time).all()]
+        finally:
+            db.close()
+
+    def bulk_create_bookings(self, records: List[dict]) -> int:
+        if not records:
+            return 0
+        db = self.SessionLocal()
+        try:
+            bookings = []
+            for data in records:
+                data = dict(data)
+                if isinstance(data.get("booking_date"), str):
+                    data["booking_date"] = datetime.strptime(data["booking_date"], "%Y-%m-%d").date()
+                if "custom_data" in data and isinstance(data["custom_data"], dict):
+                    data["custom_data"] = json.dumps(data["custom_data"], ensure_ascii=False)
+                bookings.append(self.Booking(**data))
+            db.add_all(bookings)
+            db.commit()
+            return len(bookings)
+        except Exception:
+            db.rollback()
+            raise
         finally:
             db.close()
 
@@ -243,6 +274,35 @@ class JSONStorage(StorageBackend):
     async def get_all_bookings(self) -> List[dict]:
         db = self._read()
         return sorted(db["bookings"], key=lambda x: (x.get("booking_date", ""), x.get("start_time", "")), reverse=True)
+
+    def bulk_create_bookings(self, records: List[dict]) -> int:
+        if not records:
+            return 0
+        db = self._read()
+        now = datetime.now().isoformat()
+        for data in records:
+            booking_id = db["_next_id"]
+            db["_next_id"] += 1
+            db["bookings"].append({
+                "id": booking_id,
+                "student_name": data.get("student_name"),
+                "student_id": data.get("student_id"),
+                "major": data.get("major"),
+                "supervisor": data.get("supervisor"),
+                "classroom": data.get("classroom"),
+                "booking_date": data.get("booking_date"),
+                "start_time": data.get("start_time"),
+                "end_time": data.get("end_time"),
+                "purpose": data.get("purpose"),
+                "phone": data.get("phone"),
+                "status": data.get("status", "pending"),
+                "custom_data": data.get("custom_data", {}),
+                "created_at": now,
+                "updated_at": now,
+            })
+        self._write(db)
+        self._backup()
+        return len(records)
 
 
 def get_storage() -> StorageBackend:

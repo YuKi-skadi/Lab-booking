@@ -1,4 +1,5 @@
 import json
+import hmac
 import os
 import shutil
 from datetime import datetime
@@ -39,6 +40,8 @@ DEFAULT_SETTINGS = {
         "purpose": {"required": False, "label": "借用用途", "type": "textarea", "order": 9, "validation": {}},
     },
     "custom_fields": [],
+    "semesters": [],
+    "semester_version": 0,
     "success_message": "预约已提交，请按照学校/单位规定流程确认预约并办理正式手续。",
     "admin_password": settings.admin_password,
     "subtitle": {
@@ -46,7 +49,7 @@ DEFAULT_SETTINGS = {
         "fontSize": "16px",
         "fontWeight": "400",
         "fontStyle": "normal",
-        "color": "#ffffff",
+        "color": "#0369a1",
     },
     "notice_lines": [
         "请及时到办公室核实能否正式预约",
@@ -58,10 +61,12 @@ DEFAULT_SETTINGS = {
 class SettingsManager:
     def __init__(self):
         self._data: dict = None
+        self._loaded_mtime: float = None
         os.makedirs(settings.json_data_dir, exist_ok=True)
 
     def _ensure_loaded(self):
-        if self._data is None:
+        current_mtime = os.path.getmtime(SETTINGS_FILE) if os.path.exists(SETTINGS_FILE) else None
+        if self._data is None or (current_mtime is not None and current_mtime != self._loaded_mtime):
             self.load()
 
     def load(self) -> dict:
@@ -70,10 +75,33 @@ class SettingsManager:
                 stored = json.load(f)
             self._data = {**DEFAULT_SETTINGS, **stored}
         else:
-            self._data = dict(DEFAULT_SETTINGS)
+            self._data = self._load_default_overrides()
         self._deep_merge_defaults()
         self.save()
         return self._data
+
+    def _load_default_overrides(self) -> dict:
+        """Apply ignored local deployment defaults without changing public defaults."""
+        data = dict(DEFAULT_SETTINGS)
+
+        classrooms = os.getenv("LAB_BOOKING_DEFAULT_CLASSROOMS", "").strip()
+        if classrooms:
+            data["classrooms"] = [item.strip() for item in classrooms.split(",") if item.strip()]
+
+        majors = os.getenv("LAB_BOOKING_DEFAULT_MAJORS", "").strip()
+        if majors:
+            data["majors"] = [item.strip() for item in majors.split(",") if item.strip()]
+
+        time_slots = os.getenv("LAB_BOOKING_DEFAULT_TIME_SLOTS_JSON", "").strip()
+        if time_slots:
+            try:
+                parsed = json.loads(time_slots)
+                if isinstance(parsed, list) and all(isinstance(item, dict) and item.get("slot") for item in parsed):
+                    data["time_slots"] = parsed
+            except json.JSONDecodeError:
+                pass
+
+        return data
 
     def _deep_merge_defaults(self):
         """为旧 setting 补充缺失的默认值（如校验规则）"""
@@ -92,6 +120,7 @@ class SettingsManager:
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(self._data, f, ensure_ascii=False, indent=2)
         os.replace(tmp, SETTINGS_FILE)
+        self._loaded_mtime = os.path.getmtime(SETTINGS_FILE)
 
     def get_all(self) -> dict:
         self._ensure_loaded()
@@ -174,6 +203,14 @@ class SettingsManager:
     def custom_fields(self) -> list:
         return self.get("custom_fields", [])
 
+    @property
+    def semesters(self) -> list:
+        return self.get("semesters", [])
+
+    @property
+    def semester_version(self) -> int:
+        return int(self.get("semester_version", 0) or 0)
+
     def get_all_fields(self) -> list:
         """获取所有表单字段（内置 + 自定义），按 order 排序"""
         fields = []
@@ -186,7 +223,8 @@ class SettingsManager:
         return fields
 
     def check_admin_password(self, password: str) -> bool:
-        return password == self.admin_password
+        expected = self.admin_password
+        return bool(password and expected) and hmac.compare_digest(password, expected)
 
 
 

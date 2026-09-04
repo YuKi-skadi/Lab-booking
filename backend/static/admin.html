@@ -16,6 +16,10 @@
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
         .header { background: linear-gradient(135deg, #1e293b, #334155); color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
         .header h1 { font-size: 1.25rem; }
+        .header-actions { display: flex; align-items: center; gap: 16px; }
+        .header-task-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #64748b; border-radius: 6px; padding: 8px 12px; min-height: 44px; background: rgba(255,255,255,0.08); color: #e2e8f0; cursor: pointer; font: inherit; font-size: 0.85rem; }
+        .header-task-btn:hover, .header-task-btn:focus-visible { background: rgba(255,255,255,0.16); color: white; outline: 2px solid #a5b4fc; outline-offset: 2px; }
+        .task-count { min-width: 20px; padding: 1px 5px; border-radius: 10px; background: var(--warning); color: white; font-size: 0.72rem; text-align: center; }
         .header .logout { color: #94a3b8; cursor: pointer; font-size: 0.9rem; }
         .header .logout:hover { color: white; }
 
@@ -91,6 +95,37 @@
         .alert-error { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
         .alert-info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
 
+        .task-item { border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 10px; background: #fff; }
+        .task-item:last-child { margin-bottom: 0; }
+        .task-item-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+        .task-title { font-weight: 700; margin-bottom: 5px; }
+        .task-meta { color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6; }
+        .task-status { font-size: 0.78rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+        .task-status-queued { background: #f1f5f9; color: #475569; }
+        .task-status-running { background: #dbeafe; color: #1d4ed8; }
+        .task-status-completed { background: #d1fae5; color: #065f46; }
+        .task-status-failed { background: #fee2e2; color: #991b1b; }
+        .task-status-cancelled { background: #f1f5f9; color: #64748b; }
+        .task-progress { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+        .progress-track { flex: 1; height: 8px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); border-radius: inherit; transition: width 0.25s ease; }
+        .progress-label { min-width: 42px; color: var(--text-secondary); font-size: 0.8rem; text-align: right; }
+        .task-message { margin-top: 8px; color: var(--text-secondary); font-size: 0.85rem; }
+        .section-heading-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+        .section-heading-row h3 { margin-bottom: 0; }
+        .section-heading-actions { display: flex; align-items: center; gap: 8px; }
+        .section-heading-actions select { min-width: 180px; padding: 7px 10px; border: 2px solid var(--border); border-radius: 6px; font: inherit; font-size: 0.85rem; }
+        .batch-clickable { cursor: pointer; }
+        .batch-clickable:hover { border-color: #c4b5fd; background: #fafaff; }
+        .course-detail-table td, .course-detail-table th { white-space: nowrap; }
+
+        .modal-backdrop { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(15,23,42,0.52); }
+        .modal { width: min(460px, 100%); background: white; border-radius: 12px; box-shadow: 0 20px 40px rgba(15,23,42,0.25); padding: 24px; }
+        .modal h3 { margin-bottom: 10px; }
+        .modal p { color: var(--text-secondary); line-height: 1.6; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+        .modal .form-group { text-align: left; }
+
         .loading { display: inline-block; width: 18px; height: 18px; border: 2px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.6s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -114,13 +149,404 @@
             .two-col { grid-template-columns: 1fr; }
             table { display: block; overflow-x: auto; }
         }
+
+        /* Fluent 2 / Soft UI Evolution: desktop admin workspace */
+        :root {
+            --primary: #0d9488;
+            --primary-hover: #0f766e;
+            --success: #0f766e;
+            --danger: #dc2626;
+            --warning: #d97706;
+            --bg: #f2f8f9;
+            --card-bg: #ffffff;
+            --text: #12343b;
+            --text-secondary: #617981;
+            --border: #d7e6e9;
+            --shadow: 0 2px 6px rgba(20, 67, 75, 0.08), 0 12px 28px rgba(20, 67, 75, 0.05);
+            --focus-ring: 0 0 0 3px rgba(13, 148, 136, 0.22);
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: "Segoe UI Variable", "Inter", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+        #login-screen {
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            background: #eef7f8;
+        }
+        #login-screen > div { width: min(420px, 100%); margin: 0 !important; }
+        .header {
+            min-height: 72px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            padding: 14px 28px;
+            background: #ffffff;
+            color: var(--text);
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 2px 12px rgba(20, 67, 75, 0.05);
+        }
+        .header h1 { font-size: 1.35rem; letter-spacing: -0.02em; }
+        .header-actions { display: flex; align-items: center; gap: 12px; }
+        .header-task-btn {
+            min-height: 42px;
+            padding: 8px 14px;
+            border: 1px solid #a9d8d3;
+            border-radius: 10px;
+            background: #effaf8;
+            color: var(--primary-hover);
+            font: inherit;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+        }
+        .header-task-btn:hover { background: #dff7f3; box-shadow: 0 4px 10px rgba(13, 148, 136, 0.12); transform: translateY(-1px); }
+        .header-task-btn:focus-visible, .logout:focus-visible { outline: 3px solid rgba(13, 148, 136, 0.35); outline-offset: 2px; }
+        .task-count { display: inline-grid; place-items: center; min-width: 22px; height: 22px; margin-left: 4px; border-radius: 999px; background: var(--primary); color: white; font-size: 0.75rem; }
+        .logout { color: var(--text-secondary); font-size: 0.88rem; cursor: pointer; padding: 10px 2px; }
+        .logout:hover { color: var(--primary-hover); }
+        .layout { min-height: calc(100vh - 72px); background: var(--bg); }
+        .sidebar { width: 232px; padding: 18px 10px; background: #f8fcfc; border-right: 1px solid var(--border); }
+         .nav-item {
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            margin: 4px 0;
+            padding: 10px 14px;
+            border: 1px solid transparent !important;
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 180ms ease, color 180ms ease, border-color 180ms ease;
+        }
+        .nav-icon {
+            display: inline-grid;
+            place-items: center;
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            flex: 0 0 20px;
+            color: var(--primary);
+        }
+        .nav-icon svg, .nav-drag-handle svg {
+            width: 100%;
+            height: 100%;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .nav-label { flex: 1; min-width: 0; }
+        .nav-drag-handle {
+            display: inline-grid;
+            place-items: center;
+            width: 34px;
+            height: 34px;
+            padding: 7px;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            background: transparent;
+            color: #8aa9b8;
+            cursor: grab;
+            touch-action: none;
+            transition: background 180ms ease, color 180ms ease, border-color 180ms ease;
+        }
+        .nav-drag-handle:hover { background: #e0f2fe; border-color: #b7dff2; color: var(--primary-hover); }
+        .nav-drag-handle:active, .sidebar-dragging .nav-drag-handle { cursor: grabbing; }
+        .nav-item.is-dragging {
+            position: fixed !important;
+            z-index: 40;
+            opacity: 1;
+            background: #ffffff;
+            border-color: #7dd3fc !important;
+            box-shadow: 0 14px 30px rgba(2, 132, 199, 0.22), 0 0 0 4px rgba(2, 132, 199, 0.1);
+            transform: translateY(-3px) scale(1.03);
+            transition: none;
+        }
+        .nav-item.is-arming { background: #eaf6fc; border-color: #b7dff2 !important; }
+        .nav-drop-placeholder {
+            height: 44px;
+            margin: 4px 0;
+            border: 2px dashed #7dd3fc;
+            border-radius: 10px;
+            background: #eaf6fc;
+            box-shadow: inset 0 0 0 1px rgba(2, 132, 199, 0.06);
+        }
+        .sidebar-dragging .nav-item:not(.is-dragging) { transition: transform 180ms ease, background 180ms ease, border-color 180ms ease; }
+        .nav-item.is-drop-target { border-color: #7dd3fc !important; background: #eaf6fc; }
+        .nav-reorder-hint { padding: 16px 14px 4px; color: #8aa9b8; font-size: 0.72rem; line-height: 1.4; }
+        .nav-item:hover { background: #eaf7f5; color: var(--primary-hover); }
+        .nav-item.active { background: #dff7f3; color: var(--primary-hover); border-color: #b8e4df !important; box-shadow: none; }
+        .main { padding: 28px; max-width: 1600px; }
+        .card { border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); padding: 22px; }
+        .card h3 { color: var(--text); letter-spacing: -0.01em; }
+        .stats { gap: 16px; margin-bottom: 20px; }
+        .stat-card { border: 1px solid var(--border); border-radius: 14px; background: #ffffff; box-shadow: var(--shadow); padding: 20px; }
+        .stat-card .stat-num { color: var(--primary-hover); }
+        .stat-card .stat-label, .task-meta, .task-message { color: var(--text-secondary); }
+        .filter-bar { gap: 12px; padding: 14px; margin-bottom: 18px; border: 1px solid #e4eff1; border-radius: 12px; background: #f8fcfc; }
+        .form-group label { color: var(--text); }
+        .form-group input, .form-group select, .form-group textarea, .section-heading-actions select {
+            min-height: 44px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #fbfefe;
+            color: var(--text);
+            transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus, .section-heading-actions select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: var(--focus-ring);
+            background: #ffffff;
+        }
+        .btn { min-height: 42px; border-radius: 10px; touch-action: manipulation; transition: background 180ms ease, box-shadow 180ms ease, transform 180ms ease; }
+        .btn:hover:not(:disabled) { transform: translateY(-1px); }
+        .btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgba(13, 148, 136, 0.35); outline-offset: 2px; }
+        .btn-primary { background: var(--primary); box-shadow: 0 4px 10px rgba(13, 148, 136, 0.16); }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+        .btn-success { background: #158f83; }
+        .btn-success:hover:not(:disabled) { background: #0f766e; }
+        .btn-secondary { background: #eaf3f4; color: #31565d; }
+        .btn-secondary:hover:not(:disabled) { background: #dcebed; }
+        .btn-danger { background: var(--danger); }
+        .btn-warning { background: var(--warning); }
+        table { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+        th { background: #edf7f7; color: #49666c; }
+        td, th { border-bottom-color: #e5eff1; }
+        tr:hover { background: #f5fbfb; }
+        .list-item, .avail-card, .task-item {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(20, 67, 75, 0.04);
+        }
+        .list-item:hover { border-color: #a9d8d3; background: #f8fdfd; }
+        .task-item { padding: 18px; }
+        .task-status-running { background: #dff7f3; color: #0f766e; }
+        .task-status-queued { background: #eef3f4; color: #526b71; }
+        .task-status-completed { background: #e6f6ed; color: #197044; }
+        .task-status-failed { background: #fee9e7; color: #b42318; }
+        .progress-track { height: 9px; background: #e1edef; }
+        .progress-fill { background: var(--primary); }
+        .modal-backdrop { background: rgba(18, 52, 59, 0.42); backdrop-filter: blur(4px); }
+        .modal { border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 18px 50px rgba(18, 52, 59, 0.2); }
+        .section-heading-actions select { min-width: 190px; padding: 7px 12px; }
+        .availability-grid { gap: 16px; }
+        .avail-card { padding: 18px; }
+        pre { border: 1px solid var(--border); background: #f6fbfb; color: #31565d; }
+        @media (max-width: 1100px) {
+            .main { padding: 20px; }
+            .sidebar { width: 208px; }
+        }
+        @media (max-width: 768px) {
+            .header { padding: 12px 16px; }
+            .header h1 { font-size: 1.05rem; }
+            .header-task-btn { min-height: 40px; padding: 7px 10px; }
+            .main { padding: 14px; }
+            .card { padding: 16px; }
+            .section-heading-row { align-items: flex-start; flex-direction: column; }
+            .section-heading-actions { width: 100%; flex-wrap: wrap; }
+            .section-heading-actions select { flex: 1; min-width: 160px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+        }
+        /* Cyan-blue theme tokens */
+        :root {
+            --primary: #0284c7;
+            --primary-hover: #0369a1;
+            --bg: #f1f8fc;
+            --text: #12364a;
+            --text-secondary: #5f7887;
+            --border: #d4e5ee;
+            --focus-ring: 0 0 0 3px rgba(2, 132, 199, 0.22);
+        }
+        #login-screen { background: #eef8fd; }
+        .header { background: #ffffff; }
+        .header-task-btn { border-color: #a7d8ee; background: #eef8fd; color: var(--primary-hover); }
+        .header-task-btn:hover { background: #e0f2fe; box-shadow: 0 4px 10px rgba(2, 132, 199, 0.12); }
+        .header-task-btn:focus-visible, .logout:focus-visible { outline-color: rgba(2, 132, 199, 0.35); }
+        .sidebar { background: #f8fcff; }
+        .nav-item:hover { background: #eaf6fc; color: var(--primary-hover); }
+        .nav-item.active { background: #e0f2fe; color: var(--primary-hover); border-color: #b7dff2 !important; }
+        .nav-icon { color: var(--primary); }
+        .nav-drag-handle:hover { background: #e0f2fe; border-color: #b7dff2; color: var(--primary-hover); }
+        .nav-item.is-drop-target { border-color: #7dd3fc !important; background: #eaf6fc; }
+        .filter-bar { border-color: #e2eff6; background: #f8fcff; }
+        .btn-primary { background: var(--primary); box-shadow: 0 4px 10px rgba(2, 132, 199, 0.16); }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+        .btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline-color: rgba(2, 132, 199, 0.35); }
+        th { background: #edf7fc; }
+        tr:hover { background: #f5fbfe; }
+        .list-item:hover { border-color: #a7d8ee; background: #f8fcff; }
+        .task-status-running { background: #e0f2fe; color: #0369a1; }
+        .progress-fill { background: var(--primary); }
+
+        /* Course import controls: compact, readable choices instead of native checkboxes. */
+        .course-import-card .course-weekday-grid,
+        .course-import-card .course-slot-grid {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: stretch;
+            gap: 10px;
+        }
+        .course-import-card .course-weekday-grid {
+            max-width: 560px;
+            gap: 8px;
+        }
+        .course-import-card .course-weekday-chip {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 64px;
+            min-height: 42px;
+            margin: 0;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #fbfefe;
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            user-select: none;
+            transition: background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+        }
+        .course-import-card .course-weekday-chip:hover {
+            border-color: #8fcbea;
+            background: #f2faff;
+            color: var(--primary-hover);
+        }
+        .course-import-card .course-weekday-chip:has(input:checked),
+        .course-import-card .course-slot-card:has(input:checked) {
+            border-color: #38a9dc;
+            background: #e8f6fd;
+            color: #0369a1;
+            box-shadow: 0 3px 10px rgba(2, 132, 199, 0.12);
+        }
+        .course-import-card .course-weekday-chip:has(input:focus-visible),
+        .course-import-card .course-slot-card:has(input:focus-visible) {
+            outline: 3px solid rgba(2, 132, 199, 0.22);
+            outline-offset: 2px;
+        }
+        .course-import-card .choice-check {
+            display: inline-grid;
+            place-items: center;
+            width: 18px;
+            height: 18px;
+            margin-right: 7px;
+            border: 1.5px solid #9cb6c3;
+            border-radius: 5px;
+            background: #ffffff;
+            color: transparent;
+            font-size: 0.78rem;
+            line-height: 1;
+            transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+        }
+        .course-import-card input[type="checkbox"] {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            min-width: 0;
+            min-height: 0;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .course-import-card input[type="checkbox"]:checked + .choice-check {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: #ffffff;
+        }
+        .course-import-card .course-slot-card {
+            position: relative;
+            display: flex;
+            flex: 0 1 248px;
+            min-width: 190px;
+            max-width: 300px;
+            min-height: 72px;
+            align-items: center;
+            gap: 12px;
+            margin: 0;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: 11px;
+            background: #fbfefe;
+            color: var(--text);
+            cursor: pointer;
+            user-select: none;
+            transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+        }
+        .course-import-card .course-slot-card:hover {
+            border-color: #8fcbea;
+            background: #f2faff;
+            transform: translateY(-1px);
+        }
+        .course-import-card .course-slot-card .choice-check {
+            flex: 0 0 22px;
+            width: 22px;
+            height: 22px;
+            margin: 0;
+            border-radius: 7px;
+            font-size: 0.9rem;
+        }
+        .course-import-card .course-slot-copy {
+            display: flex;
+            min-width: 0;
+            flex: 1;
+            flex-direction: column;
+            gap: 3px;
+            line-height: 1.35;
+        }
+        .course-import-card .course-slot-time {
+            white-space: nowrap;
+            font-size: 0.9rem;
+            font-weight: 750;
+            letter-spacing: 0.01em;
+        }
+        .course-import-card .course-slot-remark {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            font-weight: 500;
+            overflow-wrap: anywhere;
+        }
+        .course-import-card .course-slot-card:has(input:checked) .course-slot-remark { color: #16729f; }
+        .course-import-card .course-slot-empty {
+            width: 100%;
+            padding: 14px;
+            border: 1px dashed var(--border);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            background: #f8fcff;
+        }
+        @media (max-width: 900px) {
+            .course-import-card .course-slot-card { flex-basis: 220px; }
+        }
+        @media (max-width: 768px) {
+            .course-import-card .course-weekday-chip { flex: 1 1 calc(25% - 8px); min-width: 0; }
+            .course-import-card .course-slot-card { flex: 1 1 100%; max-width: none; }
+        }
     </style>
 </head>
 <body>
     <div id="login-screen">
         <div style="max-width:400px;margin:100px auto">
             <div class="card" style="text-align:center">
-                <h2 style="margin-bottom:20px">🔐 管理员登录</h2>
+                <h2 style="margin-bottom:20px">管理员登录</h2>
                 <div id="login-error" style="color:var(--danger);margin-bottom:12px;display:none"></div>
                 <div class="form-group">
                     <input type="password" id="admin-password" placeholder="请输入管理员密码" style="text-align:center;font-size:1.1rem" onkeydown="if(event.key==='Enter')login()">
@@ -133,20 +559,23 @@
     <div id="app-screen" style="display:none">
         <div class="header">
             <h1>实验室预约管理系统</h1>
-            <span class="logout" onclick="logout()">退出登录</span>
+                <div class="header-actions">
+                    <button class="header-task-btn" onclick="switchPage('tasks')" aria-label="查看后台任务">后台任务 <span id="task-count" class="task-count" style="display:none">0</span></button>
+                    <span class="logout" onclick="logout()">退出登录</span>
+                </div>
         </div>
         <div class="layout">
             <div class="sidebar">
-                <div class="nav-item active" onclick="switchPage('dashboard')" data-page="dashboard">📊 仪表盘</div>
-                <div class="nav-item" onclick="switchPage('bookings')" data-page="bookings">📋 预约管理</div>
-                <div class="nav-item" onclick="switchPage('availability')" data-page="availability">📅 可用性一览</div>
-                <div class="nav-item" onclick="switchPage('classrooms')" data-page="classrooms">🏫 教室管理</div>
-                <div class="nav-item" onclick="switchPage('majors')" data-page="majors">📚 专业预设</div>
-                <div class="nav-item" onclick="switchPage('formconfig')" data-page="formconfig">⚙️ 表单配置</div>
-                <div class="nav-item" onclick="switchPage('settings')" data-page="settings">🔧 系统设置</div>
-                <div class="nav-item" onclick="switchPage('database')" data-page="database">💾 数据库管理</div>
-                <div class="nav-item" onclick="switchPage('courses')" data-page="courses">📖 排课导入</div>
-                <div class="nav-item" onclick="switchPage('coursebookings')" data-page="coursebookings">📋 排课记录</div>
+                <div class="nav-item active" onclick="switchPage('dashboard')" data-page="dashboard">仪表盘</div>
+                <div class="nav-item" onclick="switchPage('bookings')" data-page="bookings">预约管理</div>
+                <div class="nav-item" onclick="switchPage('availability')" data-page="availability">可用性一览</div>
+                <div class="nav-item" onclick="switchPage('classrooms')" data-page="classrooms">教室管理</div>
+                <div class="nav-item" onclick="switchPage('majors')" data-page="majors">专业预设</div>
+                <div class="nav-item" onclick="switchPage('formconfig')" data-page="formconfig">表单配置</div>
+                <div class="nav-item" onclick="switchPage('settings')" data-page="settings">系统设置</div>
+                <div class="nav-item" onclick="switchPage('database')" data-page="database">数据库管理</div>
+                <div class="nav-item" onclick="switchPage('courses')" data-page="courses">排课导入</div>
+                <div class="nav-reorder-hint">长按右侧手柄约 0.5 秒，再拖动排序</div>
             </div>
             <div class="main">
                 <!-- Dashboard -->
@@ -168,9 +597,9 @@
                         </div>
                         <div id="batch-actions" style="display:none; margin-bottom:12px; padding:10px 14px; background:#f8fafc; border-radius:8px; align-items:center; gap:10px">
                             <span style="font-weight:600;font-size:0.9rem">已选 <span id="selected-count">0</span> 条</span>
-                            <button class="btn btn-success btn-sm" onclick="batchUpdateStatus('approved')">✅ 批量通过</button>
-                            <button class="btn btn-warning btn-sm" onclick="batchUpdateStatus('rejected')">❌ 批量拒绝</button>
-                            <button class="btn btn-danger btn-sm" onclick="batchDelete()">🗑️ 批量删除</button>
+                            <button class="btn btn-success btn-sm" onclick="batchUpdateStatus('approved')">批量通过</button>
+                            <button class="btn btn-warning btn-sm" onclick="batchUpdateStatus('rejected')">批量拒绝</button>
+                            <button class="btn btn-danger btn-sm" onclick="batchDelete()">批量删除</button>
                         </div>
                         <div id="bookings-table" style="overflow-x:auto"></div>
                     </div>
@@ -235,7 +664,7 @@
                             <div class="form-group"><label>样式</label><select id="subtitle-style">
                                 <option value="normal" selected>正常</option><option value="italic">斜体</option>
                             </select></div>
-                            <div class="form-group"><label>颜色</label><input type="color" id="subtitle-color" value="#ffffff"></div>
+                        <div class="form-group"><label>颜色</label><input type="color" id="subtitle-color" value="#0369a1"></div>
                         </div>
 
                         <h4 style="margin-top:20px">可预约时间段</h4>
@@ -257,20 +686,20 @@
                     <div class="card">
                         <h3>备份数据库</h3>
                         <p style="color:var(--text-secondary);margin-bottom:12px">下载所有预约记录为 JSON 文件</p>
-                        <a class="btn btn-primary" id="backup-btn" href="#" onclick="downloadBackup()" style="text-decoration:none">📥 下载备份 (JSON)</a>
+                        <a class="btn btn-primary" id="backup-btn" href="#" onclick="downloadBackup()" style="text-decoration:none">下载备份 (JSON)</a>
                     </div>
                     <div class="card">
                         <h3>导入数据</h3>
                         <p style="color:var(--text-secondary);margin-bottom:12px">从 JSON 备份文件导入预约记录（不会覆盖已有数据）</p>
                         <input type="file" id="import-file" accept=".json" style="margin-bottom:12px">
-                        <button class="btn btn-warning" onclick="importBackup()">📤 导入数据</button>
+                        <button class="btn btn-warning" onclick="importBackup()">导入数据</button>
                         <div id="import-msg"></div>
                     </div>
                 </div>
 
                 <!-- Course Import -->
                 <div class="page" id="page-courses">
-                    <div class="card">
+                    <div class="card course-import-card">
                         <h3>排课导入</h3>
                         <p style="color:var(--text-secondary);margin-bottom:16px;font-size:0.9rem">批量标记某一时间段为课程占用，这些时段将在预约查询中显示为"课程"。</p>
                         <div class="two-col">
@@ -281,40 +710,110 @@
                         </div>
                         <div class="form-group">
                             <label>重复星期</label>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap">
-                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="course-wd" value="0"> 周一</label>
-                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="course-wd" value="1"> 周二</label>
-                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="course-wd" value="2"> 周三</label>
-                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="course-wd" value="3"> 周四</label>
-                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="course-wd" value="4"> 周五</label>
-                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="course-wd" value="5"> 周六</label>
-                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="course-wd" value="6"> 周日</label>
+                            <div class="course-weekday-grid">
+                                <label class="course-weekday-chip"><input type="checkbox" class="course-wd" value="0"><span class="choice-check" aria-hidden="true">✓</span>周一</label>
+                                <label class="course-weekday-chip"><input type="checkbox" class="course-wd" value="1"><span class="choice-check" aria-hidden="true">✓</span>周二</label>
+                                <label class="course-weekday-chip"><input type="checkbox" class="course-wd" value="2"><span class="choice-check" aria-hidden="true">✓</span>周三</label>
+                                <label class="course-weekday-chip"><input type="checkbox" class="course-wd" value="3"><span class="choice-check" aria-hidden="true">✓</span>周四</label>
+                                <label class="course-weekday-chip"><input type="checkbox" class="course-wd" value="4"><span class="choice-check" aria-hidden="true">✓</span>周五</label>
+                                <label class="course-weekday-chip"><input type="checkbox" class="course-wd" value="5"><span class="choice-check" aria-hidden="true">✓</span>周六</label>
+                                <label class="course-weekday-chip"><input type="checkbox" class="course-wd" value="6"><span class="choice-check" aria-hidden="true">✓</span>周日</label>
                             </div>
                         </div>
                         <div class="form-group">
                             <label>占用时段</label>
-                            <div id="course-time-slots" style="display:flex;gap:8px;flex-wrap:wrap">
-                                <div style="color:var(--text-secondary)">请先选择教室和系统设置中的时段</div>
+                            <div id="course-time-slots" class="course-slot-grid">
+                                <div class="course-slot-empty">请先选择教室和系统设置中的时段</div>
                             </div>
                         </div>
-                        <button class="btn btn-primary" onclick="importCourse()">📖 导入课程安排</button>
+                        <button class="btn btn-primary" onclick="importCourse()">导入课程安排</button>
                         <div id="course-msg"></div>
                     </div>
 
                     <div class="card" style="margin-top:20px">
-                        <h3>已有课程批次</h3>
+                        <div class="section-heading-row">
+                            <h3>已有课程批次</h3>
+                            <div class="section-heading-actions">
+                                <select id="course-semester-filter" onchange="loadCourseBatches()" aria-label="按学期筛选课程批次">
+                                    <option value="current">当前学期</option>
+                                </select>
+                                <button class="btn btn-secondary btn-sm" onclick="openSemesterModal()">学期数据导入</button>
+                            </div>
+                        </div>
+                        <p id="course-semester-hint" style="color:var(--text-secondary);margin-bottom:12px;font-size:0.85rem"></p>
                         <div id="course-batches"><div style="color:var(--text-secondary);padding:8px">加载中...</div></div>
+                    </div>
+                    <div class="card" id="course-batch-details" style="display:none">
+                        <div class="section-heading-row">
+                            <h3>批次课程明细</h3>
+                            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('course-batch-details').style.display='none'">关闭</button>
+                        </div>
+                        <div id="course-batch-details-content"></div>
                     </div>
                 </div>
 
-                <!-- Course Bookings -->
-                <div class="page" id="page-coursebookings">
+                <!-- Background Tasks -->
+                <div class="page" id="page-tasks">
                     <div class="card">
-                        <h3>排课记录</h3>
-                        <p style="color:var(--text-secondary);margin-bottom:12px;font-size:0.9rem">通过排课导入生成的课程占用记录，不可审批，仅可删除。</p>
-                        <div id="course-bookings-table" style="overflow-x:auto"></div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px">
+                            <h3 style="margin-bottom:0">后台任务</h3>
+                            <button class="btn btn-secondary btn-sm" onclick="loadTasks()">↻ 刷新</button>
+                        </div>
+                        <p style="color:var(--text-secondary);margin-bottom:16px;font-size:0.9rem">排课导入会在后台继续执行，你可以离开此页面并继续提交其他排课。</p>
+                        <div id="tasks-list"><div style="color:var(--text-secondary);padding:8px">加载中...</div></div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="task-created-modal" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true" aria-labelledby="task-created-title">
+        <div class="modal">
+            <h3 id="task-created-title">后台任务已建立</h3>
+            <p id="task-created-detail"></p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeTaskModal()">继续录入</button>
+                <button class="btn btn-primary" onclick="openTaskPage()">查看后台任务</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="semester-modal" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true" aria-labelledby="semester-modal-title">
+        <div class="modal">
+            <h3 id="semester-modal-title">设置学期信息</h3>
+            <p style="margin-bottom:16px">例如 2026-2027-2 表示 2026 至 2027 学年第二学期。</p>
+            <div class="two-col">
+                <div class="form-group"><label for="semester-start-year">开始年份</label><input type="number" id="semester-start-year" min="2000" max="2200" placeholder="2026"></div>
+                <div class="form-group"><label for="semester-end-year">结束年份</label><input type="number" id="semester-end-year" min="2000" max="2200" placeholder="2027"></div>
+                <div class="form-group"><label for="semester-term">学期</label><select id="semester-term"><option value="1">第一学期</option><option value="2">第二学期</option></select></div>
+                <div></div>
+                <div class="form-group"><label for="semester-start-date">学期开始</label><input type="date" id="semester-start-date"></div>
+                <div class="form-group"><label for="semester-end-date">学期结束</label><input type="date" id="semester-end-date"></div>
+            </div>
+            <div id="semester-msg"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeSemesterModal()">关闭</button>
+                <button class="btn btn-primary" onclick="saveSemester()">保存学期</button>
+            </div>
+            <div style="border-top:1px solid var(--border);margin-top:20px;padding-top:16px">
+                <h4>已设置的学期</h4>
+                <div id="semester-list"><div style="color:var(--text-secondary)">加载中...</div></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="course-edit-modal" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true" aria-labelledby="course-edit-title">
+        <div class="modal">
+            <h3 id="course-edit-title">调整单次课程</h3>
+            <p style="margin-bottom:16px">如果新的日期、时段或教室已被占用，系统会拒绝本次调整。</p>
+            <input type="hidden" id="edit-course-id">
+            <div class="form-group"><label for="edit-course-date">日期</label><input type="date" id="edit-course-date"></div>
+            <div class="form-group"><label for="edit-course-room">教室</label><select id="edit-course-room"></select></div>
+            <div class="form-group"><label for="edit-course-slot">占用时段</label><select id="edit-course-slot"></select></div>
+            <div id="course-edit-msg"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeCourseEditModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveCourseEdit()">保存调整</button>
             </div>
         </div>
     </div>
@@ -324,29 +823,306 @@
         let allBookings = [];
         let sortField = 'id';
         let sortAsc = true;
+        let taskPollTimer = null;
+        let courseClassrooms = [];
+        let courseTimeSlots = [];
+        let currentCourseBatchId = '';
+        let currentCourseBookings = [];
 
+        const ADMIN_SESSION_KEY = 'lab-booking-admin-session-v1';
+        const ADMIN_SESSION_TTL = 8 * 60 * 60 * 1000;
+        const SIDEBAR_ORDER_KEY = 'lab-booking-admin-sidebar-order-v1';
+        const sidebarIconSvgs = {
+            dashboard: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"></rect><rect x="14" y="4" width="6" height="6" rx="1"></rect><rect x="4" y="14" width="6" height="6" rx="1"></rect><rect x="14" y="14" width="6" height="6" rx="1"></rect></svg>',
+            bookings: '<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M8 3v4M16 3v4M4 10h16M8 14h3M13 14h3M8 17h3"></path></svg>',
+            availability: '<svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"></path></svg>',
+            classrooms: '<svg viewBox="0 0 24 24"><path d="M4 20h16M6 20V7h12v13M9 7V4h6v3M9 11h2M13 11h2M9 15h2M13 15h2"></path></svg>',
+            majors: '<svg viewBox="0 0 24 24"><path d="M4 6h16v12H4zM7 4h10v2M8 10h8M8 14h5"></path></svg>',
+            formconfig: '<svg viewBox="0 0 24 24"><path d="M5 5h14v14H5zM8 9h8M8 13h5M8 16h3"></path></svg>',
+            settings: '<svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14M9 5v4M15 10v4M11 15v4"></path></svg>',
+            database: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"></ellipse><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"></path></svg>',
+            courses: '<svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM8 4v16M11 8h5M11 12h5"></path></svg>'
+        };
+
+        function initSidebarNavigation() {
+            const sidebar = document.querySelector('.sidebar');
+            if (!sidebar) return;
+            sidebar.querySelectorAll('.nav-item').forEach(item => {
+                const page = item.dataset.page;
+                const label = item.textContent.trim();
+                item.setAttribute('role', 'button');
+                item.setAttribute('tabindex', '0');
+                item.innerHTML = `<span class="nav-icon" aria-hidden="true">${sidebarIconSvgs[page] || ''}</span><span class="nav-label">${escapeHtml(label)}</span><button class="nav-drag-handle" type="button" title="长按后拖动排序" aria-label="长按后拖动${escapeHtml(label)}排序"><svg viewBox="0 0 24 24"><path d="M8 5h.01M16 5h.01M8 12h.01M16 12h.01M8 19h.01M16 19h.01"></path></svg></button>`;
+                item.addEventListener('keydown', event => {
+                    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); switchPage(page); }
+                });
+            });
+            restoreSidebarOrder(sidebar);
+            initSidebarDrag(sidebar);
+        }
+
+        function restoreSidebarOrder(sidebar) {
+            let saved = [];
+            try { saved = JSON.parse(localStorage.getItem(SIDEBAR_ORDER_KEY) || '[]'); } catch (e) { saved = []; }
+            if (!Array.isArray(saved)) return;
+            const hint = sidebar.querySelector('.nav-reorder-hint');
+            saved.forEach(page => {
+                const item = [...sidebar.querySelectorAll('.nav-item')].find(candidate => candidate.dataset.page === page);
+                if (item) sidebar.insertBefore(item, hint || null);
+            });
+        }
+
+        function persistSidebarOrder(sidebar) {
+            try { localStorage.setItem(SIDEBAR_ORDER_KEY, JSON.stringify([...sidebar.querySelectorAll('.nav-item')].map(item => item.dataset.page))); } catch (e) {}
+        }
+
+        function moveSidebarItem(sidebar, item, direction) {
+            const items = [...sidebar.querySelectorAll('.nav-item')];
+            const index = items.indexOf(item);
+            const target = items[index + direction];
+            if (!target) return;
+            sidebar.insertBefore(item, direction < 0 ? target : target.nextSibling);
+            persistSidebarOrder(sidebar);
+        }
+
+        function initSidebarDrag(sidebar) {
+            sidebar.querySelectorAll('.nav-drag-handle').forEach(handle => {
+                let state = null;
+                const clearDropTarget = () => sidebar.querySelectorAll('.is-drop-target').forEach(item => item.classList.remove('is-drop-target'));
+                const finish = event => {
+                    if (!state || state.pointerId !== event.pointerId) return;
+                    clearTimeout(state.timer);
+                    const wasActive = state.active;
+                    if (state.placeholder) {
+                        sidebar.insertBefore(state.item, state.placeholder);
+                        state.placeholder.remove();
+                    }
+                    if (wasActive) persistSidebarOrder(sidebar);
+                    clearDropTarget();
+                    state.item.classList.remove('is-dragging', 'is-arming');
+                    if (state.originalStyle === null) state.item.removeAttribute('style');
+                    else state.item.setAttribute('style', state.originalStyle);
+                    state.item.removeAttribute('aria-grabbed');
+                    document.body.classList.remove('sidebar-dragging');
+                    state = null;
+                };
+                handle.addEventListener('pointerdown', event => {
+                    event.preventDefault();
+                    const item = handle.closest('.nav-item');
+                    state = { item, pointerId: event.pointerId, startY: event.clientY, active: false, placeholder: null, originalStyle: item.getAttribute('style'), timer: setTimeout(() => {
+                        if (!state) return;
+                        const rect = item.getBoundingClientRect();
+                        state.active = true;
+                        state.offsetY = event.clientY - rect.top;
+                        state.offsetX = event.clientX - rect.left;
+                        state.placeholder = document.createElement('div');
+                        state.placeholder.className = 'nav-drop-placeholder';
+                        state.placeholder.style.height = `${rect.height}px`;
+                        sidebar.insertBefore(state.placeholder, item);
+                        item.classList.add('is-dragging');
+                        item.classList.remove('is-arming');
+                        item.setAttribute('aria-grabbed', 'true');
+                        item.style.position = 'fixed';
+                        item.style.left = `${rect.left}px`;
+                        item.style.top = `${rect.top}px`;
+                        item.style.width = `${rect.width}px`;
+                        item.style.pointerEvents = 'none';
+                        item.style.zIndex = '40';
+                        document.body.classList.add('sidebar-dragging');
+                    }, 450) };
+                    item.classList.add('is-arming');
+                    handle.setPointerCapture?.(event.pointerId);
+                });
+                handle.addEventListener('pointermove', event => {
+                    if (!state || state.pointerId !== event.pointerId) return;
+                    if (!state.active) {
+                        if (Math.abs(event.clientY - state.startY) > 8) { clearTimeout(state.timer); state.item.classList.remove('is-arming'); state = null; }
+                        return;
+                    }
+                    state.item.style.left = `${event.clientX - state.offsetX}px`;
+                    state.item.style.top = `${event.clientY - state.offsetY}px`;
+                    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.nav-item');
+                    if (!target || target === state.item || !sidebar.contains(target)) return;
+                    clearDropTarget();
+                    target.classList.add('is-drop-target');
+                    const before = event.clientY < target.getBoundingClientRect().top + target.offsetHeight / 2;
+                    sidebar.insertBefore(state.placeholder, before ? target : target.nextSibling);
+                });
+                handle.addEventListener('pointerup', finish);
+                handle.addEventListener('pointercancel', finish);
+                handle.addEventListener('keydown', event => {
+                    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+                        event.preventDefault();
+                        moveSidebarItem(sidebar, handle.closest('.nav-item'), event.key === 'ArrowUp' ? -1 : 1);
+                    }
+                });
+                handle.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); });
+            });
+        }
+
+        function saveAdminSession(password) {
+            try {
+                sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({ password, expiresAt: Date.now() + ADMIN_SESSION_TTL }));
+            } catch (e) {}
+        }
+        function clearAdminSession() {
+            try { sessionStorage.removeItem(ADMIN_SESSION_KEY); } catch (e) {}
+        }
+        function getSavedAdminPassword() {
+            try {
+                const saved = JSON.parse(sessionStorage.getItem(ADMIN_SESSION_KEY) || 'null');
+                if (saved?.password && Number(saved.expiresAt) > Date.now()) return saved.password;
+            } catch (e) {}
+            clearAdminSession();
+            return '';
+        }
+        function showAdminApp() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-screen').style.display = '';
+        }
+        async function restoreAdminSession() {
+            const savedPassword = getSavedAdminPassword();
+            if (!savedPassword) return;
+            try {
+                const resp = await fetch('/api/admin/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: savedPassword }) });
+                if (!resp.ok) { clearAdminSession(); return; }
+                adminPassword = savedPassword;
+                showAdminApp();
+                await initApp();
+            } catch (e) {
+                adminPassword = '';
+                clearAdminSession();
+            }
+        }
         async function login() {
             const pwd = document.getElementById('admin-password').value;
             try {
                 const resp = await fetch('/api/admin/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pwd }) });
-                if (resp.ok) { adminPassword = pwd; document.getElementById('login-screen').style.display = 'none'; document.getElementById('app-screen').style.display = ''; await initApp(); }
+                if (resp.ok) { adminPassword = pwd; saveAdminSession(pwd); showAdminApp(); await initApp(); }
                 else { document.getElementById('login-error').textContent = '密码错误'; document.getElementById('login-error').style.display = ''; }
             } catch (e) { document.getElementById('login-error').textContent = '连接失败'; document.getElementById('login-error').style.display = ''; }
         }
-        function logout() { adminPassword = ''; document.getElementById('login-screen').style.display = ''; document.getElementById('app-screen').style.display = 'none'; }
+        function logout() {
+            adminPassword = '';
+            clearAdminSession();
+            if (taskPollTimer) { clearInterval(taskPollTimer); taskPollTimer = null; }
+            document.getElementById('login-screen').style.display = '';
+            document.getElementById('app-screen').style.display = 'none';
+            closeTaskModal();
+        }
         async function api(path, opts = {}) {
-            const sep = path.includes('?') ? '&' : '?';
-            const resp = await fetch(path + sep + 'password=' + encodeURIComponent(adminPassword), opts);
+            const headers = new Headers(opts.headers || {});
+            headers.set('X-Admin-Password', adminPassword);
+            const resp = await fetch(path, { ...opts, headers });
             if (!resp.ok && resp.status === 403) { alert('密码已变更，请重新登录'); logout(); }
             return resp;
         }
 
-        async function initApp() { await loadAllData(); document.getElementById('avail-date').value = new Date().toISOString().split('T')[0]; initBackupLink(); }
+        async function initApp() {
+            await loadAllData();
+            document.getElementById('avail-date').value = new Date().toISOString().split('T')[0];
+            initBackupLink();
+            await refreshTaskSummary();
+            if (taskPollTimer) clearInterval(taskPollTimer);
+            taskPollTimer = setInterval(async () => {
+                if (!adminPassword) return;
+                await refreshTaskSummary();
+                if (document.getElementById('page-tasks').classList.contains('active')) loadTasks();
+            }, 1500);
+        }
         async function loadAllData() {
             try { allBookings = await (await api('/api/bookings/all')).json(); } catch (e) { allBookings = []; }
             try { const r = await api('/api/admin/classrooms'); document.getElementById('filter-room').innerHTML = '<option value="">全部</option>' + (await r.json()).classrooms.map(c => `<option value="${c}">${c}</option>`).join(''); } catch (e) {}
             renderDashboard(); renderBookingsTable();
         }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        }
+
+        function taskStatusLabel(status) {
+            return { queued: '排队中', running: '进行中', completed: '已完成', failed: '失败', cancelled: '已取消' }[status] || status;
+        }
+
+        function formatTaskTime(value) {
+            return value ? value.replace('T', ' ') : '-';
+        }
+
+        async function refreshTaskSummary() {
+            try {
+                const data = await (await api('/api/admin/tasks')).json();
+                const active = (data.tasks || []).filter(t => ['queued', 'running'].includes(t.status)).length;
+                const badge = document.getElementById('task-count');
+                badge.textContent = active;
+                badge.style.display = active ? 'inline-block' : 'none';
+            } catch (e) {}
+        }
+
+        async function loadTasks() {
+            const container = document.getElementById('tasks-list');
+            container.innerHTML = '<div style="text-align:center;padding:20px"><span class="loading"></span></div>';
+            try {
+                const data = await (await api('/api/admin/tasks')).json();
+                if (!data.tasks || !data.tasks.length) {
+                    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">暂无后台任务</div>';
+                    return;
+                }
+                container.innerHTML = data.tasks.map(task => {
+                    const meta = task.metadata || {};
+                    const percent = Math.min(100, Math.max(0, Number(task.percent) || 0));
+                    const result = task.result ? `；新增 ${task.result.created || 0} 条，跳过 ${task.result.skipped || 0} 条` : '';
+                    const error = task.error ? `<div class="alert alert-error" style="margin-top:10px;margin-bottom:0">${escapeHtml(task.error)}</div>` : '';
+                    const cancel = task.status === 'queued' ? `<button class="btn btn-danger btn-sm" onclick="cancelTask('${escapeHtml(task.id)}')">× 取消任务</button>` : '';
+                    return `<div class="task-item">
+                        <div class="task-item-header">
+                            <div>
+                                <div class="task-title">${escapeHtml(task.title)}</div>
+                                <div class="task-meta">${escapeHtml(meta.classroom || '')} · ${escapeHtml(meta.course_name || '')} · ${escapeHtml(meta.start_date || '')} ~ ${escapeHtml(meta.end_date || '')}</div>
+                            </div>
+                            <span class="task-status task-status-${escapeHtml(task.status)}">${escapeHtml(taskStatusLabel(task.status))}</span>
+                        </div>
+                        <div class="task-progress" role="progressbar" aria-label="任务进度 ${percent}%" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}">
+                            <div class="progress-track"><div class="progress-fill" style="width:${percent}%"></div></div>
+                            <span class="progress-label">${percent}%</span>
+                        </div>
+                        <div class="task-message">${escapeHtml(task.message || '')}${escapeHtml(result)} · 建立于 ${escapeHtml(formatTaskTime(task.created_at))}</div>
+                        ${cancel ? `<div style="margin-top:10px;text-align:right">${cancel}</div>` : ''}
+                        ${error}
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                container.innerHTML = '<div class="alert alert-error">后台任务加载失败，请稍后重试</div>';
+            }
+        }
+
+        function showTaskCreatedModal(task) {
+            const meta = task.metadata || {};
+            document.getElementById('task-created-detail').innerHTML = `“${escapeHtml(meta.course_name || '课程安排')}”的排课导入已交给后台处理。当前状态：<strong>${escapeHtml(taskStatusLabel(task.status))}</strong>，共 ${task.total || 0} 个时段。你可以继续录入下一条排课。`;
+            document.getElementById('task-created-modal').style.display = 'flex';
+            document.querySelector('#task-created-modal .btn-secondary').focus();
+        }
+
+        function closeTaskModal() { document.getElementById('task-created-modal').style.display = 'none'; }
+        function openTaskPage() { closeTaskModal(); switchPage('tasks'); }
+
+        async function cancelTask(taskId) {
+            if (!confirm('确认取消这个尚未开始的后台任务？')) return;
+            const resp = await api(`/api/admin/tasks/${encodeURIComponent(taskId)}/cancel`, { method: 'POST' });
+            const data = await resp.json();
+            if (!resp.ok) { alert(data.detail || '任务取消失败'); return; }
+            await loadTasks();
+            await refreshTaskSummary();
+        }
+
+        document.getElementById('task-created-modal').addEventListener('click', event => {
+            if (event.target.id === 'task-created-modal') closeTaskModal();
+        });
+        document.getElementById('semester-modal').addEventListener('click', event => {
+            if (event.target.id === 'semester-modal') closeSemesterModal();
+        });
+        document.getElementById('course-edit-modal').addEventListener('click', event => {
+            if (event.target.id === 'course-edit-modal') closeCourseEditModal();
+        });
 
         function switchPage(page) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -362,7 +1138,7 @@
             if (page === 'settings') loadSettings();
             if (page === 'database') loadDbConfig();
             if (page === 'courses') loadCoursePage();
-            if (page === 'coursebookings') renderCourseBookings();
+            if (page === 'tasks') loadTasks();
         }
 
         function renderDashboard() {
@@ -448,7 +1224,6 @@
             if (sortField === field) { sortAsc = !sortAsc; }
             else { sortField = field; sortAsc = true; }
             if (document.getElementById('page-bookings').classList.contains('active')) renderBookingsTable();
-            else if (document.getElementById('page-coursebookings').classList.contains('active')) renderCourseBookings();
             else renderDashboard();
         }
         function updateBatchBar() {
@@ -687,7 +1462,7 @@
             document.getElementById('subtitle-size').value = s.fontSize || '16px';
             document.getElementById('subtitle-weight').value = s.fontWeight || '400';
             document.getElementById('subtitle-style').value = s.fontStyle || 'normal';
-            document.getElementById('subtitle-color').value = s.color || '#ffffff';
+            document.getElementById('subtitle-color').value = s.color || '#0369a1';
 
             // Time slots
             timeSlotRows = (data.time_slots || []).map(t => typeof t === 'string' ? { slot: t, remark: '' } : { slot: t.slot || '', remark: t.remark || '' });
@@ -737,7 +1512,7 @@
             if (newPwd) body.admin_password = newPwd;
 
             await api('/api/admin/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-            if (newPwd) { adminPassword = newPwd; document.getElementById('set-admin-password').value = newPwd; }
+            if (newPwd) { adminPassword = newPwd; saveAdminSession(newPwd); document.getElementById('set-admin-password').value = newPwd; }
             document.getElementById('settings-msg').innerHTML = '<div class="alert alert-success">✅ 设置已保存</div>';
             setTimeout(() => document.getElementById('settings-msg').innerHTML = '', 3000);
         }
@@ -749,11 +1524,20 @@
         }
 
         function initBackupLink() {
-            document.getElementById('backup-btn').href = `/api/admin/db/backup?password=${encodeURIComponent(adminPassword)}`;
+            document.getElementById('backup-btn').href = '#';
         }
 
-        function downloadBackup() {
-            document.getElementById('backup-btn').href = `/api/admin/db/backup?password=${encodeURIComponent(adminPassword)}`;
+        async function downloadBackup(event) {
+            event?.preventDefault();
+            const resp = await fetch('/api/admin/db/backup', { headers: { 'X-Admin-Password': adminPassword } });
+            if (!resp.ok) { alert('备份下载失败，请重新登录'); return; }
+            const blob = await resp.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'lab-bookings-backup.json';
+            link.click();
+            URL.revokeObjectURL(url);
         }
 
         async function importBackup() {
@@ -763,7 +1547,7 @@
             const file = fileInput.files[0];
             const formData = new FormData();
             formData.append('file', file);
-            const resp = await fetch(`/api/admin/db/import?password=${encodeURIComponent(adminPassword)}`, { method: 'POST', body: formData });
+            const resp = await fetch('/api/admin/db/import', { method: 'POST', headers: { 'X-Admin-Password': adminPassword }, body: formData });
             const data = await resp.json();
             if (resp.ok) {
                 msgEl.innerHTML = `<div class="alert alert-success">✅ 导入成功：${data.imported} 条记录，跳过 ${data.skipped} 条</div>`;
@@ -779,21 +1563,30 @@
             try {
                 const resp = await api('/api/admin/classrooms');
                 const data = await resp.json();
+                courseClassrooms = data.classrooms || [];
                 document.getElementById('course-room').innerHTML = '<option value="">请选择教室</option>' +
-                    data.classrooms.map(c => `<option value="${c}">${c}</option>`).join('');
+                    courseClassrooms.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
             } catch(e) {}
 
             // Load time slots
             try {
                 const resp = await fetch('/api/admin/public/form-config');
                 const config = await resp.json();
-                const slots = config.time_slots || [];
-                document.getElementById('course-time-slots').innerHTML = slots.map((s, i) =>
-                    `<label style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:6px 10px;border:1px solid var(--border);border-radius:6px">
-                        <input type="checkbox" class="course-ts" value="${i}" data-start="${s.start}" data-end="${s.end}">
-                        ${s.start}-${s.end} ${s.remark ? '('+s.remark+')' : ''}
-                    </label>`
-                ).join('');
+                courseTimeSlots = config.time_slots || [];
+                document.getElementById('course-time-slots').innerHTML = courseTimeSlots.length
+                    ? courseTimeSlots.map((s, i) => {
+                        const remark = s.remark ? `<span class="course-slot-remark">${escapeHtml(s.remark)}</span>` : '';
+                        const label = `${s.start}-${s.end}${s.remark ? ` ${s.remark}` : ''}`;
+                        return `<label class="course-slot-card">
+                            <input type="checkbox" class="course-ts" value="${i}" data-start="${escapeHtml(s.start)}" data-end="${escapeHtml(s.end)}" aria-label="${escapeHtml(label)}">
+                            <span class="choice-check" aria-hidden="true">✓</span>
+                            <span class="course-slot-copy">
+                                <span class="course-slot-time">${escapeHtml(s.start)}-${escapeHtml(s.end)}</span>
+                                ${remark}
+                            </span>
+                        </label>`;
+                    }).join('')
+                    : '<div class="course-slot-empty">请先选择教室和系统设置中的时段</div>';
             } catch(e) {}
             loadCourseBatches();
         }
@@ -819,66 +1612,177 @@
             const resp = await api('/api/admin/courses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
             const data = await resp.json();
             if (!resp.ok) { msgEl.innerHTML = `<div class="alert alert-error">${data.detail || '导入失败'}</div>`; return; }
-            msgEl.innerHTML = `<div class="alert alert-success">✅ 成功创建 ${data.created} 条课程记录${data.skipped ? '，跳过 ' + data.skipped + ' 条冲突' : ''}</div>`;
-            await loadAllData();
-            await loadCourseBatches();
+            msgEl.innerHTML = '<div class="alert alert-info">后台任务已建立，正在处理排课数据。</div>';
+            showTaskCreatedModal(data.task || { status: 'queued', total: 0, metadata: { course_name: name } });
+            await refreshTaskSummary();
+        }
+
+        function renderSemesterFilter(data) {
+            const select = document.getElementById('course-semester-filter');
+            const previous = select.value || 'current';
+            const active = (data.semesters || []).find(s => s.id === data.active_semester_id);
+            let html = `<option value="current">当前学期${active ? '（' + escapeHtml(active.code) + '）' : '（未匹配）'}</option>`;
+            html += '<option value="all">全部显示</option>';
+            html += (data.semesters || []).map(s => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.code)}</option>`).join('');
+            html += '<option value="other">其他（未匹配学期）</option>';
+            select.innerHTML = html;
+            select.value = Array.from(select.options).some(option => option.value === previous) ? previous : 'current';
+            const hint = document.getElementById('course-semester-hint');
+            hint.textContent = active ? `当前日期属于 ${active.code}，默认显示该学期的课程批次。` : '当前日期没有匹配的学期，默认不显示课程批次；可通过筛选查看全部或其他批次。';
         }
 
         async function loadCourseBatches() {
             const container = document.getElementById('course-batches');
             try {
-                const resp = await api('/api/admin/courses/batches');
+                const filter = document.getElementById('course-semester-filter').value || 'current';
+                const query = filter === 'current' ? '' : `?semester_id=${encodeURIComponent(filter)}`;
+                const resp = await api('/api/admin/courses/batches' + query);
                 const data = await resp.json();
+                renderSemesterFilter(data);
                 if (!data.batches || !data.batches.length) {
-                    container.innerHTML = '<div style="color:var(--text-secondary);padding:8px">暂无课程批次</div>';
+                    container.innerHTML = '<div style="color:var(--text-secondary);padding:16px 8px">当前筛选下暂无课程批次</div>';
+                    document.getElementById('course-batch-details').style.display = 'none';
                     return;
                 }
                 container.innerHTML = data.batches.map(b => `
-                    <div class="list-item">
+                    <div class="list-item batch-clickable" onclick="openCourseBatch('${encodeURIComponent(b.batch_id)}')" title="点击查看批次明细">
                         <span>
-                            <strong>${b.course_name || '课程'} (${b.classroom})</strong>
-                            <span style="color:var(--text-secondary);font-size:0.85rem"> - ${b.count}条 | ${b.date_range}</span>
+                            <strong>${escapeHtml(b.course_name || '课程')} (${escapeHtml(b.classroom)})</strong>
+                            <span style="color:var(--text-secondary);font-size:0.85rem"> - ${b.count}条 | ${escapeHtml(b.date_range)} | ${escapeHtml(b.semester_code || '其他')}</span>
                             ${b.batch_id === 'unknown' ? '<span style="color:#d97706;font-size:0.8rem">（旧版记录，请在预约管理中删除）</span>' : ''}
                         </span>
-                        ${b.batch_id !== 'unknown' ? `<button class="btn btn-danger btn-sm" onclick="deleteCourseBatch('${b.batch_id}')">删除批次</button>` : ''}
+                        ${b.batch_id !== 'unknown' ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteCourseBatch('${encodeURIComponent(b.batch_id)}')">删除批次</button>` : ''}
                     </div>
                 `).join('');
             } catch(e) { container.innerHTML = '<div class="alert alert-error">加载失败</div>'; }
         }
 
-        async function deleteCourseBatch(batchId) {
+        async function openCourseBatch(encodedBatchId) {
+            currentCourseBatchId = decodeURIComponent(encodedBatchId);
+            const card = document.getElementById('course-batch-details');
+            const container = document.getElementById('course-batch-details-content');
+            card.style.display = '';
+            container.innerHTML = '<div style="text-align:center;padding:20px"><span class="loading"></span></div>';
+            try {
+                const resp = await api('/api/admin/courses/batches/' + encodeURIComponent(currentCourseBatchId));
+                const data = await resp.json();
+                if (!resp.ok) { container.innerHTML = `<div class="alert alert-error">${escapeHtml(data.detail || '批次加载失败')}</div>`; return; }
+                currentCourseBookings = data.bookings || [];
+                container.innerHTML = currentCourseBookings.length ? `<div style="overflow-x:auto"><table class="course-detail-table"><tr><th>日期</th><th>教室</th><th>时段</th><th>课程名</th><th>操作</th></tr>${currentCourseBookings.map(b => `<tr>
+                    <td>${escapeHtml(b.booking_date)}</td><td>${escapeHtml(b.classroom)}</td><td>${escapeHtml(b.start_time)}-${escapeHtml(b.end_time)}</td><td>${escapeHtml(b.purpose || '-')}</td>
+                    <td><button class="btn btn-secondary btn-sm" onclick="openCourseEdit(${b.id})">调整</button> <button class="btn btn-danger btn-sm" onclick="deleteSingleCourse(${b.id})">删除</button></td>
+                </tr>`).join('')}</table></div>` : '<div style="color:var(--text-secondary);padding:16px 8px">该批次暂无课程记录</div>';
+                card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch(e) { container.innerHTML = '<div class="alert alert-error">批次加载失败，请稍后重试</div>'; }
+        }
+
+        async function deleteCourseBatch(encodedBatchId) {
+            const batchId = decodeURIComponent(encodedBatchId);
             if (!confirm('确认删除该课程批次的所有记录？此操作不可恢复！')) return;
-            const resp = await api('/api/admin/courses/batches/' + batchId, { method: 'DELETE' });
+            const resp = await api('/api/admin/courses/batches/' + encodeURIComponent(batchId), { method: 'DELETE' });
             const data = await resp.json();
             if (!resp.ok) { alert(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail || '删除失败')); return; }
             alert(`已删除 ${data.deleted} 条课程记录`);
+            document.getElementById('course-batch-details').style.display = 'none';
             await loadCourseBatches();
             await loadAllData();
         }
 
-        function renderCourseBookings() {
-            let bookings = allBookings.filter(b => b.status === 'course');
-            if (!bookings.length) {
-                document.getElementById('course-bookings-table').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">暂无排课记录</div>';
-                return;
-            }
-            // Sort
-            bookings = [...bookings].sort((a, b) => {
-                const va = a[sortField] || '', vb = b[sortField] || '';
-                return sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
-            });
-            const mk = (label, field) => `<span style="cursor:pointer" onclick="sortBy('${field}')">${label}${sortField === field ? (sortAsc ? ' ▲' : ' ▼') : ''}</span>`;
-            let html = `<table><tr><th>${mk('ID','id')}</th><th>${mk('教室','classroom')}</th><th>${mk('日期','booking_date')}</th><th>时间</th><th>课程名</th><th>操作</th></tr>`;
-            for (const b of bookings) {
-                html += `<tr>
-                    <td>${b.id}</td><td>${b.classroom}</td><td>${b.booking_date}</td>
-                    <td>${b.start_time}-${b.end_time}</td><td>${b.purpose || '-'}</td>
-                    <td><button class="btn btn-danger btn-sm" onclick="deleteBooking(${b.id})">删除</button></td>
-                </tr>`;
-            }
-            html += '</table>';
-            document.getElementById('course-bookings-table').innerHTML = html;
+        async function deleteSingleCourse(id) {
+            if (!confirm('确认删除这条课程记录？此操作不可恢复！')) return;
+            const resp = await api('/api/bookings/' + id, { method: 'DELETE' });
+            const data = await resp.json();
+            if (!resp.ok) { alert(data.detail || '删除失败'); return; }
+            await loadAllData();
+            await openCourseBatch(encodeURIComponent(currentCourseBatchId));
+            await loadCourseBatches();
         }
+
+        function openCourseEdit(id) {
+            const booking = currentCourseBookings.find(item => item.id === id);
+            if (!booking) return;
+            document.getElementById('edit-course-id').value = id;
+            document.getElementById('edit-course-date').value = booking.booking_date || '';
+            document.getElementById('edit-course-room').innerHTML = courseClassrooms.map(room => `<option value="${escapeHtml(room)}">${escapeHtml(room)}</option>`).join('');
+            document.getElementById('edit-course-room').value = booking.classroom || '';
+            let options = courseTimeSlots.map(slot => ({ value: `${slot.start}|${slot.end}`, label: `${slot.start}-${slot.end}` }));
+            const currentValue = `${booking.start_time}|${booking.end_time}`;
+            if (!options.some(item => item.value === currentValue)) options.push({ value: currentValue, label: `${booking.start_time}-${booking.end_time}（当前）` });
+            document.getElementById('edit-course-slot').innerHTML = options.map(item => `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`).join('');
+            document.getElementById('edit-course-slot').value = currentValue;
+            document.getElementById('course-edit-msg').innerHTML = '';
+            document.getElementById('course-edit-modal').style.display = 'flex';
+            document.getElementById('edit-course-date').focus();
+        }
+
+        function closeCourseEditModal() { document.getElementById('course-edit-modal').style.display = 'none'; }
+
+        async function saveCourseEdit() {
+            const id = document.getElementById('edit-course-id').value;
+            const slot = document.getElementById('edit-course-slot').value.split('|');
+            const body = {
+                booking_date: document.getElementById('edit-course-date').value,
+                classroom: document.getElementById('edit-course-room').value,
+                start_time: slot[0],
+                end_time: slot[1],
+            };
+            const msg = document.getElementById('course-edit-msg');
+            if (!body.booking_date || !body.classroom || slot.length !== 2) { msg.innerHTML = '<div class="alert alert-error">请完整填写调整信息</div>'; return; }
+            const resp = await api('/api/admin/courses/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const data = await resp.json();
+            if (!resp.ok) { msg.innerHTML = `<div class="alert alert-error">${escapeHtml(data.detail || '调整失败')}</div>`; return; }
+            closeCourseEditModal();
+            await loadAllData();
+            await openCourseBatch(encodeURIComponent(currentCourseBatchId));
+            await loadCourseBatches();
+        }
+
+        async function openSemesterModal() {
+            document.getElementById('semester-msg').innerHTML = '';
+            document.getElementById('semester-modal').style.display = 'flex';
+            await loadSemesters();
+            document.getElementById('semester-start-year').focus();
+        }
+
+        function closeSemesterModal() { document.getElementById('semester-modal').style.display = 'none'; }
+
+        async function loadSemesters() {
+            const list = document.getElementById('semester-list');
+            try {
+                const data = await (await api('/api/admin/semesters')).json();
+                if (!data.semesters || !data.semesters.length) { list.innerHTML = '<div style="color:var(--text-secondary)">还没有设置学期</div>'; return; }
+                list.innerHTML = data.semesters.map(s => `<div class="list-item"><span><strong>${escapeHtml(s.code)}</strong><span style="color:var(--text-secondary);font-size:0.85rem"> · ${escapeHtml(s.start_date)} ~ ${escapeHtml(s.end_date)}</span></span><button class="btn btn-danger btn-sm" onclick="deleteSemester('${escapeHtml(s.id)}')">删除</button></div>`).join('');
+            } catch(e) { list.innerHTML = '<div class="alert alert-error">学期加载失败</div>'; }
+        }
+
+        async function saveSemester() {
+            const msg = document.getElementById('semester-msg');
+            const body = {
+                start_year: parseInt(document.getElementById('semester-start-year').value),
+                end_year: parseInt(document.getElementById('semester-end-year').value),
+                term: parseInt(document.getElementById('semester-term').value),
+                start_date: document.getElementById('semester-start-date').value,
+                end_date: document.getElementById('semester-end-date').value,
+            };
+            const resp = await api('/api/admin/semesters', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const data = await resp.json();
+            if (!resp.ok) { msg.innerHTML = `<div class="alert alert-error">${escapeHtml(data.detail || '学期保存失败')}</div>`; return; }
+            msg.innerHTML = `<div class="alert alert-success">已保存学期 ${escapeHtml(data.semester.code)}</div>`;
+            await loadSemesters();
+            await loadCourseBatches();
+        }
+
+        async function deleteSemester(id) {
+            if (!confirm('确认删除这个学期设置？课程记录不会被删除。')) return;
+            const resp = await api('/api/admin/semesters/' + encodeURIComponent(id), { method: 'DELETE' });
+            const data = await resp.json();
+            if (!resp.ok) { alert(data.detail || '删除失败'); return; }
+            await loadSemesters();
+            await loadCourseBatches();
+        }
+
+        initSidebarNavigation();
+        restoreAdminSession();
     </script>
 </body>
 </html>

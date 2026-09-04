@@ -87,7 +87,7 @@ async def agent_query(
                     result["classrooms"].append({
                         "classroom": room,
                         "available": False,
-                        "reason": f"被 {b['student_name']} 预约 ({b['start_time']}-{b['end_time']})"
+                        "reason": "该时间段已被预约"
                     })
                     break
             if is_available:
@@ -183,7 +183,7 @@ async def agent_check_slot(
                 "classroom": classroom,
                 "date": date,
                 "time": f"{start_time}-{end_time}",
-                "reason": f"该时间段已被 {b['student_name']}({b['student_id']}) 预约 ({b['start_time']}-{b['end_time']})",
+                "reason": "该时间段已被预约",
             }
 
     return {
